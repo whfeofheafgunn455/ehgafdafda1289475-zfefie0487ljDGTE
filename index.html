@@ -55,14 +55,29 @@
         textarea.memo-box { width: 100%; height: 140px; padding: 15px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 16px; font-family: inherit; resize: vertical; box-sizing: border-box; line-height: 1.5; }
         .save-status { font-size: 12px; color: #7f8c8d; font-weight: normal; }
         
-        .calendar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; margin-bottom: 30px; }
-        .day-card { background: var(--card-bg); padding: 18px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .day-card.win { border-top: 6px solid #27ae60; }
-        .day-card.lose { border-top: 6px solid #e74c3c; }
-        .day-date { font-size: 15px; color: #7f8c8d; margin-bottom: 10px; font-weight: bold; }
-        .day-profit { font-size: 20px; font-weight: bold; }
-        .day-count { font-size: 13px; color: #95a5a6; margin-top: 8px; }
-        
+        /* -------------------------------------
+           本格的カレンダー表示用のスタイル
+           ------------------------------------- */
+        .calendar-wrapper { background: var(--card-bg); padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .calendar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .calendar-header-left { display: flex; align-items: center; gap: 15px; }
+        .calendar-header-left h3 { margin: 0; font-size: 22px; color: #333; font-weight: normal; }
+        .month-nav-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #555; padding: 5px 15px; border-radius: 4px; transition: background 0.2s;}
+        .month-nav-btn:hover { background: #f0f0f0; }
+        .month-total { font-size: 18px; font-weight: bold; padding: 6px 20px; border-radius: 20px; color: white; display: inline-block; }
+        .month-total.positive-bg { background-color: #5DADE2; } /* 画像風の水色 */
+        .month-total.negative-bg { background-color: #E74C3C; } /* 赤色 */
+
+        .calendar-grid-actual { display: grid; grid-template-columns: repeat(7, 1fr); background: #fff; border-top: 1px solid #eee; border-left: 1px solid #eee;}
+        .cal-day-name { text-align: center; padding: 12px 0; font-size: 15px; color: #7f8c8d; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
+        .cal-cell { min-height: 90px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; border-right: 1px solid #eee; border-bottom: 1px solid #eee; background-color: #fff;}
+        .cal-cell.empty { background: #fafafa; }
+        .cal-date { font-size: 16px; color: #555; margin-bottom: auto; }
+        .cal-profit { font-size: 14px; font-weight: bold; margin-top: 5px; text-align: center; word-break: break-all;}
+        .cal-profit.positive-cal { color: #5DADE2; } /* 画像風の水色テキスト */
+        .cal-profit.negative-cal { color: #E74C3C; } /* 赤色テキスト */
+        /* ------------------------------------- */
+
         .charts-container { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
         .chart-box { flex: 1; min-width: 45%; background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .chart-container-inner { position: relative; height: 350px; width: 100%; }
@@ -93,8 +108,18 @@
             .memo-wrapper h4 { flex-direction: column; align-items: flex-start; gap: 5px; }
             .save-status { align-self: flex-end; }
             .section-title { font-size: 18px; margin: 25px 0 10px 0; }
-            .calendar-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-            .day-profit { font-size: 18px; }
+            
+            /* スマホ用カレンダー調整 */
+            .calendar-wrapper { padding: 10px; }
+            .calendar-header { flex-direction: row; }
+            .calendar-header-left h3 { font-size: 18px; }
+            .month-nav-btn { font-size: 16px; padding: 5px 10px; }
+            .month-total { font-size: 14px; padding: 4px 12px; }
+            .cal-cell { min-height: 60px; padding: 4px 2px; }
+            .cal-date { font-size: 14px; }
+            .cal-profit { font-size: 11px; margin-top: 2px;}
+            .cal-day-name { font-size: 12px; padding: 8px 0; }
+
             .chart-box { padding: 10px; }
             .chart-container-inner { height: 300px; }
             .table-container { padding: 10px; }
@@ -221,7 +246,27 @@
     </div>
 
     <div class="section-title">📅 日次損益カレンダー</div>
-    <div class="calendar-grid" id="calendarContainer"></div>
+    <div class="calendar-wrapper">
+        <div class="calendar-header">
+            <div class="calendar-header-left">
+                <button id="prevMonthBtn" class="month-nav-btn">◀</button>
+                <h3 id="calendarMonthLabel">--年--月</h3>
+            </div>
+            <div id="calendarMonthTotal" class="month-total positive-bg">¥0</div>
+            <div class="calendar-header-right">
+                <button id="nextMonthBtn" class="month-nav-btn">▶</button>
+            </div>
+        </div>
+        <div class="calendar-grid-actual" id="calendarContainer">
+            <div class="cal-day-name">日</div>
+            <div class="cal-day-name">月</div>
+            <div class="cal-day-name">火</div>
+            <div class="cal-day-name">水</div>
+            <div class="cal-day-name">木</div>
+            <div class="cal-day-name">金</div>
+            <div class="cal-day-name">土</div>
+            </div>
+    </div>
 
     <div class="charts-container">
         <div class="chart-box">
@@ -293,28 +338,37 @@
     const memoDocRef = doc(db, "dashboard_data", "shared_memos_secure_v1");
     const tradeDataRef = doc(db, "dashboard_data", "trade_history");
 
-    // グローバル変数として空の配列を用意（Firebaseからデータを入れる）
     let rawData = [];
     let cumChartInstance = null;
     let winRateChartInstance = null;
 
-    // グローバル関数化
+    // カレンダー用の年月状態保持
+    let currentCalYear = new Date().getFullYear();
+    let currentCalMonth = new Date().getMonth();
+
     window.updateDashboard = updateDashboard;
     window.resetFilters = resetFilters;
 
-    // データの読み込み処理（非同期）
     async function loadDataFromFirebase() {
         try {
             const docSnap = await getDoc(tradeDataRef);
             if (docSnap.exists()) {
-                rawData = docSnap.data().data; // Firebaseからデータを取得
+                rawData = docSnap.data().data;
                 
-                // ロード完了後、UIを表示し処理を開始
+                // データの中で最新の日付をカレンダーの初期表示月に設定
+                if(rawData.length > 0) {
+                    const sortedDates = [...rawData].map(d => d.date).sort();
+                    const latestDate = sortedDates[sortedDates.length - 1]; // "YYYY/MM/DD"
+                    currentCalYear = parseInt(latestDate.split('/')[0]);
+                    currentCalMonth = parseInt(latestDate.split('/')[1]) - 1;
+                }
+
                 document.getElementById('loadingOverlay').style.display = 'none';
                 document.getElementById('mainContent').style.display = 'block';
                 
                 initFirebaseMemo();
                 initializeFilters();
+                setupCalendarNav();
                 updateDashboard();
             } else {
                 document.getElementById('loadingOverlay').innerText = "データが見つかりません。アップロード処理を行ってください。";
@@ -377,6 +431,25 @@
         });
     }
 
+    function setupCalendarNav() {
+        document.getElementById('prevMonthBtn').addEventListener('click', () => {
+            currentCalMonth--;
+            if (currentCalMonth < 0) {
+                currentCalMonth = 11;
+                currentCalYear--;
+            }
+            updateDashboard(); 
+        });
+        document.getElementById('nextMonthBtn').addEventListener('click', () => {
+            currentCalMonth++;
+            if (currentCalMonth > 11) {
+                currentCalMonth = 0;
+                currentCalYear++;
+            }
+            updateDashboard();
+        });
+    }
+
     function initializeFilters() {
         const stockFilter = document.getElementById('stockFilter');
         const uniqueStocks = [...new Set(rawData.map(d => d.stock))].sort();
@@ -431,6 +504,65 @@
         document.getElementById(`${prefix}-hold`).textContent = `${winHoldText} / ${lossHoldText}`;
     }
 
+    function renderCalendar(dailyDataHash) {
+        const grid = document.getElementById('calendarContainer');
+        // セルのクリア（曜日ヘッダーは残す）
+        const cells = grid.querySelectorAll('.cal-cell');
+        cells.forEach(cell => cell.remove());
+
+        document.getElementById('calendarMonthLabel').textContent = `${currentCalYear}年${currentCalMonth + 1}月`;
+
+        const firstDay = new Date(currentCalYear, currentCalMonth, 1);
+        const lastDay = new Date(currentCalYear, currentCalMonth + 1, 0);
+        const startingDayOfWeek = firstDay.getDay();
+        const totalDays = lastDay.getDate();
+
+        let monthTotal = 0;
+
+        // 月初の空白セル
+        for (let i = 0; i < startingDayOfWeek; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cal-cell empty';
+            grid.appendChild(cell);
+        }
+
+        // 日付セル
+        for (let day = 1; day <= totalDays; day++) {
+            const cell = document.createElement('div');
+            cell.className = 'cal-cell';
+            
+            const dateStr = `${currentCalYear}/${String(currentCalMonth + 1).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+            const dayData = dailyDataHash[dateStr];
+
+            let dateHtml = `<div class="cal-date">${day}</div>`;
+            let profitHtml = '';
+
+            if (dayData) {
+                monthTotal += dayData.profit;
+                const profitClass = dayData.profit >= 0 ? 'positive-cal' : 'negative-cal';
+                const sign = dayData.profit > 0 ? '+' : '';
+                profitHtml = `<div class="cal-profit ${profitClass}">¥${dayData.profit.toLocaleString()}</div>`;
+            }
+
+            cell.innerHTML = dateHtml + profitHtml;
+            grid.appendChild(cell);
+        }
+
+        // 月末の空白セル（カレンダーを四角く保つため）
+        const remainingCells = (startingDayOfWeek + totalDays) % 7;
+        if (remainingCells > 0) {
+            for (let i = 0; i < 7 - remainingCells; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cal-cell empty';
+                grid.appendChild(cell);
+            }
+        }
+
+        const totalEl = document.getElementById('calendarMonthTotal');
+        totalEl.textContent = `¥${monthTotal.toLocaleString()}`;
+        totalEl.className = `month-total ${monthTotal >= 0 ? 'positive-bg' : 'negative-bg'}`;
+    }
+
     function updateDashboard() {
         const filterPerson = document.getElementById('personFilter').value;
         const filterStock = document.getElementById('stockFilter').value;
@@ -482,29 +614,15 @@
             }
         });
 
-        const overallWinRate = filteredData.length > 0 ? (totalWinsFiltered / filteredData.length) * 100 : 0;
+        // 新しいカレンダーの描画
+        renderCalendar(dailyData);
 
-        const calendarContainer = document.getElementById('calendarContainer');
-        calendarContainer.innerHTML = '';
+        const overallWinRate = filteredData.length > 0 ? (totalWinsFiltered / filteredData.length) * 100 : 0;
         const sortedDates = Object.keys(dailyData).sort();
         
-        if(sortedDates.length === 0) {
-            calendarContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #7f8c8d; font-size: 16px;">データがありません</div>';
-        } else {
-            sortedDates.forEach(date => {
-                const dayInfo = dailyData[date];
-                const isWin = dayInfo.profit >= 0;
-                const card = document.createElement('div');
-                card.className = `day-card ${isWin ? 'win' : 'lose'}`;
-                card.innerHTML = `<div class="day-date">${date}</div><div class="day-profit ${isWin ? 'positive' : 'negative'}">${dayInfo.profit > 0 ? '+' : ''}${dayInfo.profit.toLocaleString()}円</div><div class="day-count">${dayInfo.trades}回トレード</div>`;
-                calendarContainer.appendChild(card);
-            });
-        }
-
         let cumP = 0;
         const chartLabels = [];
         const chartCumProfit = [];
-        
         const winChartLabels = [];
         const chartDailyWinRate = [];
 
@@ -646,7 +764,6 @@
         });
     }
 
-    // 起動時にまずFirebaseからデータをロードする
     window.onload = function() {
         loadDataFromFirebase();
     };
