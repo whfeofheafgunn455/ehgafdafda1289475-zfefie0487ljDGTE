@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>トレード実績 振り返りダッシュボード</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    
+    <style>
+        :root { --bg-color: #f4f7f6; --card-bg: #ffffff; --text-main: #333333; --border-color: #e0e0e0; }
+        /* 全体的にフォントサイズをベースアップ */
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; font-size: 16px; }
+        .container { max-width: 1500px; margin: 0 auto; }
+        h1 { font-size: 28px; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 25px; }
+        
+        .controls { background: var(--card-bg); padding: 18px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 25px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .control-group { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+        select, input[type="date"] { padding: 8px 12px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 4px; }
+        .reset-btn { padding: 10px 20px; background-color: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 15px; }
+        .reset-btn:hover { background-color: #7f8c8d; }
+        
+        /* 比較KPIエリアのスタイル */
+        .kpi-wrapper { display: flex; flex-direction: column; gap: 20px; margin-bottom: 30px; }
+        .kpi-row { display: flex; gap: 20px; }
+        .kpi-column { flex: 1; background: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        
+        /* 全体、知希(紫)、美樹(オレンジ)のテーマカラー設定 */
+        .kpi-column.total-col { background: #eaf2f8; border-color: #3498db; }
+        .kpi-column.total-col h3 { border-bottom-color: #3498db; color: #2980b9; }
+        
+        .kpi-column.tomoki-col { background: #f4ecf7; border-color: #9b59b6; }
+        .kpi-column.tomoki-col h3 { border-bottom-color: #9b59b6; color: #8e44ad; }
+        
+        .kpi-column.miki-col { background: #fdf2e9; border-color: #e67e22; }
+        .kpi-column.miki-col h3 { border-bottom-color: #e67e22; color: #d35400; }
+
+        .kpi-column h3 { margin-top: 0; margin-bottom: 18px; text-align: center; border-bottom: 2px solid #bdc3c7; padding-bottom: 10px; font-size: 22px; font-weight: bold; }
+        
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .kpi-grid-half { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        
+        .kpi-card { background: var(--card-bg); padding: 18px 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; display: flex; flex-direction: column; justify-content: center; }
+        .kpi-title { font-size: 14px; color: #7f8c8d; margin-bottom: 10px; font-weight: bold; }
+        .kpi-value { font-size: 26px; font-weight: bold; color: #2c3e50; }
+        .kpi-value.small-text { font-size: 20px; } /* 平均値など少し長くなる項目用 */
+        .kpi-sub { font-size: 13px; color: #95a5a6; margin-top: 10px; }
+        .positive { color: #27ae60 !important; }
+        .negative { color: #e74c3c !important; }
+
+        .section-title { font-size: 22px; color: #2c3e50; margin: 35px 0 15px 0; border-left: 5px solid #3498db; padding-left: 12px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+        
+        /* メモ欄 */
+        .memo-container { display: flex; gap: 20px; margin-bottom: 30px; }
+        .memo-wrapper { flex: 1; background: var(--card-bg); padding: 18px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .memo-wrapper h4 { margin-top: 0; margin-bottom: 12px; font-size: 18px; }
+        .memo-wrapper.tomoki-memo h4 { color: #8e44ad; border-bottom: 2px solid #9b59b6; padding-bottom: 5px; }
+        .memo-wrapper.miki-memo h4 { color: #d35400; border-bottom: 2px solid #e67e22; padding-bottom: 5px; }
+        
+        textarea.memo-box { width: 100%; height: 140px; padding: 15px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 16px; font-family: inherit; resize: vertical; box-sizing: border-box; line-height: 1.5; }
+        .memo-wrapper.tomoki-memo textarea:focus { outline: none; border-color: #9b59b6; box-shadow: 0 0 5px rgba(155, 89, 182, 0.3); }
+        .memo-wrapper.miki-memo textarea:focus { outline: none; border-color: #e67e22; box-shadow: 0 0 5px rgba(230, 126, 34, 0.3); }
+        .save-status { font-size: 13px; color: #7f8c8d; float: right; font-weight: normal; margin-top: 4px;}
+        
+        .calendar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .day-card { background: var(--card-bg); padding: 18px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .day-card.win { border-top: 6px solid #27ae60; }
+        .day-card.lose { border-top: 6px solid #e74c3c; }
+        .day-date { font-size: 16px; color: #7f8c8d; margin-bottom: 10px; font-weight: bold; }
+        .day-profit { font-size: 22px; font-weight: bold; }
+        .day-count { font-size: 14px; color: #95a5a6; margin-top: 8px; }
+        
+        .charts-container { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
+        .chart-box { flex: 1; min-width: 500px; background: var(--card-bg); padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .table-container { background: var(--card-bg); padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px; overflow-x: auto; }
+        
+        table.dataTable thead th { background-color: #f8f9fa; color: #2c3e50; font-size: 15px; padding: 12px 10px; }
+        table.dataTable tbody td { font-size: 15px; vertical-align: middle; padding: 12px 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📊 トレード実績 振り返りダッシュボード</h1>
+
+    <div class="controls">
+        <div class="control-group">
+            <span style="font-size: 15px; color: #7f8c8d; margin-right: 10px; font-weight: bold;">※グラフ・テーブル表示用フィルタ</span>
+            <label for="personFilter"><strong>取引主体:</strong></label>
+            <select id="personFilter" onchange="updateDashboard()">
+                <option value="ALL">すべて</option>
+                <option value="知希">知希</option>
+                <option value="美樹">美樹</option>
+            </select>
+        </div>
+        <div class="control-group" style="margin-left: 15px;">
+            <label for="stockFilter"><strong>銘柄名:</strong></label>
+            <select id="stockFilter" onchange="updateDashboard()">
+                <option value="ALL">すべて</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="startDate"><strong>開始日:</strong></label>
+            <input type="date" id="startDate" onchange="updateDashboard()">
+        </div>
+        <div class="control-group">
+            <label for="endDate"><strong>終了日:</strong></label>
+            <input type="date" id="endDate" onchange="updateDashboard()">
+        </div>
+        <button class="reset-btn" onclick="resetFilters()">条件リセット</button>
+    </div>
+
+    <div class="kpi-wrapper">
+        <div class="kpi-column total-col">
+            <h3>🌟 全体の成績</h3>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">累計実現損益(税引前)</div>
+                    <div class="kpi-value" id="total-profit">0円</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">勝率 (取引回数)</div>
+                    <div class="kpi-value" id="total-winrate">0%</div>
+                    <div class="kpi-sub" id="total-trades">0回中 0勝</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">平均利益 / 平均損失</div>
+                    <div class="kpi-value small-text" id="total-avg">0円 / 0円</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">平均保有時間 (益出し / 損切り)</div>
+                    <div class="kpi-value small-text" id="total-hold">0分 / 0分</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="kpi-row">
+            <div class="kpi-column tomoki-col">
+                <h3>🟣 知希の成績</h3>
+                <div class="kpi-grid-half">
+                    <div class="kpi-card">
+                        <div class="kpi-title">累計実現損益(税引前)</div>
+                        <div class="kpi-value" id="tomoki-profit">0円</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">勝率 (取引回数)</div>
+                        <div class="kpi-value" id="tomoki-winrate">0%</div>
+                        <div class="kpi-sub" id="tomoki-trades">0回中 0勝</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">平均利益 / 平均損失</div>
+                        <div class="kpi-value small-text" id="tomoki-avg">0円 / 0円</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">平均保有時間 (益出し / 損切り)</div>
+                        <div class="kpi-value small-text" id="tomoki-hold">0分 / 0分</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="kpi-column miki-col">
+                <h3>🟠 美樹の成績</h3>
+                <div class="kpi-grid-half">
+                    <div class="kpi-card">
+                        <div class="kpi-title">累計実現損益(税引前)</div>
+                        <div class="kpi-value" id="miki-profit">0円</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">勝率 (取引回数)</div>
+                        <div class="kpi-value" id="miki-winrate">0%</div>
+                        <div class="kpi-sub" id="miki-trades">0回中 0勝</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">平均利益 / 平均損失</div>
+                        <div class="kpi-value small-text" id="miki-avg">0円 / 0円</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">平均保有時間 (益出し / 損切り)</div>
+                        <div class="kpi-value small-text" id="miki-hold">0分 / 0分</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">📝 振り返りメモ</div>
+    <div class="memo-container">
+        <div class="memo-wrapper tomoki-memo">
+            <h4>🟣 知希 <span id="saveStatusTomoki" class="save-status">自動保存済み</span></h4>
+            <textarea id="memoTomoki" class="memo-box" placeholder="本日のトレードの振り返りや、次回に向けた改善点などを記入してください。"></textarea>
+        </div>
+        <div class="memo-wrapper miki-memo">
+            <h4>🟠 美樹 <span id="saveStatusMiki" class="save-status">自動保存済み</span></h4>
+            <textarea id="memoMiki" class="memo-box" placeholder="本日のトレードの振り返りや、次回に向けた改善点などを記入してください。"></textarea>
+        </div>
+    </div>
+
+    <div class="section-title">📅 日次損益カレンダー</div>
+    <div class="calendar-grid" id="calendarContainer"></div>
+
+    <div class="charts-container">
+        <div class="chart-box">
+            <canvas id="cumulativeChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <canvas id="winRateChart"></canvas>
+        </div>
+    </div>
+
+    <div class="section-title">🔍 銘柄別 パフォーマンス一覧</div>
+    <div class="table-container">
+        <table id="stockTable" class="display" style="width:100%">
+            <thead>
+                <tr>
+                    <th>銘柄名</th>
+                    <th>取引回数</th>
+                    <th>勝率</th>
+                    <th>合計損益(円)</th>
+                    <th>平均利益(円)</th>
+                    <th>平均損失(円)</th>
+                    <th>平均保有(益)</th>
+                    <th>平均保有(損)</th>
+                </tr>
+            </thead>
+            <tbody id="stockTableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="section-title">📋 取引履歴詳細</div>
+    <div class="table-container">
+        <table id="dataTable" class="display" style="width:100%">
+            <thead>
+                <tr>
+                    <th>約定日</th>
+                    <th>取引主体</th>
+                    <th>銘柄名</th>
+                    <th>勝敗</th>
+                    <th>実現損益(円)</th>
+                    <th>保有時間</th>
+                </tr>
+            </thead>
+            <tbody id="dataTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// 生データ (3/2 日本郵船の取引主体を「知希」に修正済み)
+const rawData = [
+    {date: '2026/01/05', person: '美樹', stock: '三菱重工業（7011）', profit: 5000, result: '勝ち', holdTime: null},
+    {date: '2026/01/08', person: '美樹', stock: '三菱重工業（7011）', profit: 2000, result: '勝ち', holdTime: null},
+    {date: '2026/01/09', person: '美樹', stock: '三菱重工業（7011）', profit: 2500, result: '勝ち', holdTime: null},
+    {date: '2026/01/13', person: '美樹', stock: '三菱重工業（7011）', profit: 500, result: '勝ち', holdTime: null},
+    {date: '2026/01/14', person: '美樹', stock: '三菱重工業（7011）', profit: 8000, result: '勝ち', holdTime: null},
+    {date: '2026/01/15', person: '美樹', stock: '三菱商事（8058）', profit: 400, result: '勝ち', holdTime: null},
+    {date: '2026/01/16', person: '美樹', stock: '三菱商事（8058）', profit: -4400, result: '負け', holdTime: null},
+    {date: '2026/02/03', person: '美樹', stock: '三菱商事（8058）', profit: 1000, result: '勝ち', holdTime: null},
+    {date: '2026/02/05', person: '美樹', stock: '信越化学工業（4063）', profit: -5900, result: '負け', holdTime: null},
+    {date: '2026/02/06', person: '美樹', stock: '三菱商事（8058）', profit: 1400, result: '勝ち', holdTime: null},
+    {date: '2026/02/09', person: '美樹', stock: '三菱重工業（7011）', profit: 1700, result: '勝ち', holdTime: null},
+    {date: '2026/02/10', person: '美樹', stock: '三菱重工業（7011）', profit: 3100, result: '勝ち', holdTime: null},
+    {date: '2026/02/12', person: '美樹', stock: '三菱重工業（7011）', profit: 600, result: '勝ち', holdTime: null},
+    {date: '2026/02/13', person: '美樹', stock: '三菱重工業（7011）', profit: 600, result: '勝ち', holdTime: null},
+    {date: '2026/02/18', person: '美樹', stock: '三菱重工業（7011）', profit: -4900, result: '負け', holdTime: null},
+    {date: '2026/02/19', person: '美樹', stock: '三菱重工業（7011）', profit: 1500, result: '勝ち', holdTime: null},
+    {date: '2026/02/19', person: '美樹', stock: '三菱商事（8058）', profit: 400, result: '勝ち', holdTime: null},
+    {date: '2026/02/20', person: '美樹', stock: '三菱重工業（7011）', profit: -2500, result: '負け', holdTime: null},
+    {date: '2026/02/25', person: '美樹', stock: 'メルカリ（4385）', profit: 200, result: '勝ち', holdTime: 3},
+    {date: '2026/02/25', person: '美樹', stock: 'メルカリ（4385）', profit: 300, result: '勝ち', holdTime: 3},
+    {date: '2026/02/26', person: '美樹', stock: '三菱重工業（7011）', profit: -2000, result: '負け', holdTime: 32},
+    {date: '2026/02/26', person: '美樹', stock: '信越化学工業（4063）', profit: 510, result: '勝ち', holdTime: 15},
+    {date: '2026/02/27', person: '知希', stock: 'ベイカレント（6532）', profit: -100, result: '負け', holdTime: 11},
+    {date: '2026/02/27', person: '知希', stock: '日本電気（6701）', profit: 340, result: '勝ち', holdTime: 2},
+    {date: '2026/02/27', person: '知希', stock: '富士通（6702）', profit: 2320, result: '勝ち', holdTime: 4},
+    {date: '2026/02/27', person: '知希', stock: '富士通（6702）', profit: 570, result: '勝ち', holdTime: 4},
+    {date: '2026/03/02', person: '美樹', stock: '信越化学工業（4063）', profit: 1700, result: '勝ち', holdTime: 10},
+    {date: '2026/03/02', person: '知希', stock: 'ベイカレント（6532）', profit: -800, result: '負け', holdTime: 16},
+    {date: '2026/03/02', person: '美樹', stock: '信越化学工業（4063）', profit: 200, result: '勝ち', holdTime: 10},
+    {date: '2026/03/02', person: '美樹', stock: '信越化学工業（4063）', profit: 1000, result: '勝ち', holdTime: 10},
+    {date: '2026/03/02', person: '美樹', stock: '信越化学工業（4063）', profit: 1000, result: '勝ち', holdTime: 10},
+    {date: '2026/03/02', person: '美樹', stock: '信越化学工業（4063）', profit: 900, result: '勝ち', holdTime: 10},
+    {date: '2026/03/02', person: '知希', stock: '富士通（6702）', profit: 0, result: '負け', holdTime: 0},
+    {date: '2026/03/02', person: '知希', stock: '日本電気（6701）', profit: 320, result: '勝ち', holdTime: 1},
+    {date: '2026/03/02', person: '知希', stock: 'ＪＸ金属（5016）', profit: 520, result: '勝ち', holdTime: 1},
+    {date: '2026/03/02', person: '知希', stock: '三菱商事（8058）', profit: 780, result: '勝ち', holdTime: 1},
+    {date: '2026/03/02', person: '美樹', stock: '三菱重工業（7011）', profit: 1300, result: '勝ち', holdTime: 6},
+    {date: '2026/03/02', person: '知希', stock: '日本電気（6701）', profit: -2660, result: '負け', holdTime: 2},
+    {date: '2026/03/02', person: '知希', stock: '三菱商事（8058）', profit: 1050, result: '勝ち', holdTime: 1},
+    {date: '2026/03/02', person: '知希', stock: '日本郵船（9101）', profit: -3180, result: '負け', holdTime: 1},
+    {date: '2026/03/03', person: '美樹', stock: '信越化学工業（4063）', profit: -12800, result: '負け', holdTime: 165},
+    {date: '2026/03/03', person: '知希', stock: '三井E&S（7003）', profit: -7150, result: '負け', holdTime: 5},
+    {date: '2026/03/03', person: '知希', stock: 'ＪＸ金属（5016）', profit: 1840, result: '勝ち', holdTime: 4},
+    {date: '2026/03/05', person: '知希', stock: 'みずほFG（8411）', profit: 210, result: '勝ち', holdTime: 2},
+    {date: '2026/03/05', person: '美樹', stock: '信越化学工業（4063）', profit: 600, result: '勝ち', holdTime: 4},
+    {date: '2026/03/05', person: '知希', stock: '三菱UFJ（8306）', profit: 50, result: '勝ち', holdTime: 5},
+    {date: '2026/03/05', person: '美樹', stock: '信越化学工業（4063）', profit: 860, result: '勝ち', holdTime: 4},
+    {date: '2026/03/05', person: '知希', stock: '三井住友FG（8316）', profit: 610, result: '勝ち', holdTime: 2},
+    {date: '2026/03/05', person: '知希', stock: '三井住友FG（8316）', profit: 210, result: '勝ち', holdTime: 2},
+    {date: '2026/03/05', person: '美樹', stock: '信越化学工業（4063）', profit: -2500, result: '負け', holdTime: 9},
+    {date: '2026/03/05', person: '美樹', stock: '信越化学工業（4063）', profit: 700, result: '勝ち', holdTime: 4},
+    {date: '2026/03/05', person: '知希', stock: 'ＪＸ金属（5016）', profit: -160, result: '負け', holdTime: 3},
+    {date: '2026/03/05', person: '知希', stock: 'ＪＸ金属（5016）', profit: 170, result: '勝ち', holdTime: 3},
+    {date: '2026/03/05', person: '知希', stock: 'ＪＸ金属（5016）', profit: 1310, result: '勝ち', holdTime: 3},
+    {date: '2026/03/05', person: '知希', stock: '三井物産（8031）', profit: 390, result: '勝ち', holdTime: 1},
+    {date: '2026/03/05', person: '知希', stock: 'ＪＸ金属（5016）', profit: -4460, result: '負け', holdTime: 3},
+    {date: '2026/03/05', person: '知希', stock: 'みずほFG（8411）', profit: 2700, result: '勝ち', holdTime: 2},
+    {date: '2026/03/05', person: '知希', stock: '三菱UFJ（8306）', profit: 80, result: '勝ち', holdTime: 5},
+    {date: '2026/03/05', person: '知希', stock: '住友商事（8053）', profit: 580, result: '勝ち', holdTime: 2},
+    {date: '2026/03/06', person: '知希', stock: '三井住友FG（8316）', profit: -870, result: '負け', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '富士通（6702）', profit: -780, result: '負け', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '三菱UFJ（8306）', profit: 230, result: '勝ち', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: 'みずほFG（8411）', profit: -770, result: '負け', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: 'ベイカレント（6532）', profit: 1080, result: '勝ち', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '野村総合研究所（4307）', profit: 630, result: '勝ち', holdTime: null},
+    {date: '2026/03/06', person: '美樹', stock: '日本郵船（9101）', profit: 1760, result: '勝ち', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '日本電気（6701）', profit: -1280, result: '負け', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '日本電気（6701）', profit: 500, result: '勝ち', holdTime: null},
+    {date: '2026/03/06', person: '美樹', stock: '日本郵船（9101）', profit: 1200, result: '勝ち', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '日本電気（6701）', profit: 600, result: '勝ち', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '日本電気（6701）', profit: 710, result: '勝ち', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '野村総合研究所（4307）', profit: 410, result: '勝ち', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '日本電気（6701）', profit: -640, result: '負け', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: 'ベイカレント（6532）', profit: -1060, result: '負け', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '富士通（6702）', profit: 640, result: '勝ち', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '野村総合研究所（4307）', profit: 420, result: '勝ち', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '野村総合研究所（4307）', profit: 600, result: '勝ち', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: 'ＪＸ金属（5016）', profit: -2030, result: '負け', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '野村総合研究所（4307）', profit: -1520, result: '負け', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '野村総合研究所（4307）', profit: 2010, result: '勝ち', holdTime: null},
+    {date: '2026/03/06', person: '知希', stock: '富士通（6702）', profit: -1630, result: '負け', holdTime: null}
+];
+
+let cumChartInstance = null;
+let winRateChartInstance = null;
+
+function initMemo() {
+    const memoTomoki = document.getElementById('memoTomoki');
+    const memoMiki = document.getElementById('memoMiki');
+    const statusTomoki = document.getElementById('saveStatusTomoki');
+    const statusMiki = document.getElementById('saveStatusMiki');
+    
+    if (localStorage.getItem('memoTomoki')) memoTomoki.value = localStorage.getItem('memoTomoki');
+    if (localStorage.getItem('memoMiki')) memoMiki.value = localStorage.getItem('memoMiki');
+
+    let timeoutTomoki, timeoutMiki;
+
+    memoTomoki.addEventListener('input', function() {
+        statusTomoki.textContent = '保存中...';
+        statusTomoki.style.color = '#e67e22';
+        clearTimeout(timeoutTomoki);
+        timeoutTomoki = setTimeout(() => {
+            localStorage.setItem('memoTomoki', this.value);
+            statusTomoki.textContent = '自動保存済み';
+            statusTomoki.style.color = '#7f8c8d';
+        }, 1000);
+    });
+
+    memoMiki.addEventListener('input', function() {
+        statusMiki.textContent = '保存中...';
+        statusMiki.style.color = '#e67e22';
+        clearTimeout(timeoutMiki);
+        timeoutMiki = setTimeout(() => {
+            localStorage.setItem('memoMiki', this.value);
+            statusMiki.textContent = '自動保存済み';
+            statusMiki.style.color = '#7f8c8d';
+        }, 1000);
+    });
+}
+
+function initializeFilters() {
+    const stockFilter = document.getElementById('stockFilter');
+    const uniqueStocks = [...new Set(rawData.map(d => d.stock))].sort();
+    uniqueStocks.forEach(stock => {
+        const option = document.createElement('option');
+        option.value = stock;
+        option.textContent = stock;
+        stockFilter.appendChild(option);
+    });
+}
+
+function resetFilters() {
+    document.getElementById('personFilter').value = 'ALL';
+    document.getElementById('stockFilter').value = 'ALL';
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    updateDashboard();
+}
+
+function calcAndRenderKPIs(data, prefix) {
+    let totalProfit = 0, grossProfit = 0, grossLoss = 0, winCount = 0, lossCount = 0;
+    let winHoldSum = 0, winHoldCount = 0, lossHoldSum = 0, lossHoldCount = 0;
+
+    data.forEach(d => {
+        totalProfit += d.profit;
+        if(d.profit >= 0) {
+            grossProfit += d.profit; winCount++;
+            if (d.holdTime !== null) { winHoldSum += d.holdTime; winHoldCount++; }
+        } else if (d.profit < 0) {
+            grossLoss += Math.abs(d.profit); lossCount++;
+            if (d.holdTime !== null) { lossHoldSum += d.holdTime; lossHoldCount++; }
+        }
+    });
+
+    const trades = data.length;
+    const winRate = trades > 0 ? ((winCount / trades) * 100).toFixed(1) : 0;
+    const avgWin = winCount > 0 ? Math.round(grossProfit / winCount) : 0;
+    const avgLoss = lossCount > 0 ? Math.round(grossLoss / lossCount) : 0;
+    const avgWinHold = winHoldCount > 0 ? Math.round(winHoldSum / winHoldCount) : 0;
+    const avgLossHold = lossHoldCount > 0 ? Math.round(lossHoldSum / lossHoldCount) : 0;
+
+    const profitEl = document.getElementById(`${prefix}-profit`);
+    profitEl.textContent = totalProfit.toLocaleString() + '円';
+    profitEl.className = 'kpi-value ' + (totalProfit >= 0 ? 'positive' : 'negative');
+    
+    document.getElementById(`${prefix}-winrate`).textContent = winRate + '%';
+    document.getElementById(`${prefix}-trades`).textContent = `${trades}回中 ${winCount}勝 ${lossCount}敗`;
+    document.getElementById(`${prefix}-avg`).textContent = `+${avgWin.toLocaleString()}円 / -${avgLoss.toLocaleString()}円`;
+    
+    const winHoldText = winHoldCount > 0 ? `${avgWinHold}分` : '-';
+    const lossHoldText = lossHoldCount > 0 ? `${avgLossHold}分` : '-';
+    document.getElementById(`${prefix}-hold`).textContent = `${winHoldText} / ${lossHoldText}`;
+}
+
+function updateDashboard() {
+    const filterPerson = document.getElementById('personFilter').value;
+    const filterStock = document.getElementById('stockFilter').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    const baseData = rawData.filter(d => {
+        const recordDate = d.date.replace(/\//g, '-');
+        const matchStock = filterStock === 'ALL' || d.stock === filterStock;
+        const matchStart = startDate === '' || recordDate >= startDate;
+        const matchEnd = endDate === '' || recordDate <= endDate;
+        return matchStock && matchStart && matchEnd;
+    });
+
+    const tomokiData = baseData.filter(d => d.person === '知希');
+    const mikiData = baseData.filter(d => d.person === '美樹');
+
+    calcAndRenderKPIs(baseData, 'total');
+    calcAndRenderKPIs(tomokiData, 'tomoki');
+    calcAndRenderKPIs(mikiData, 'miki');
+
+    // グラフ・テーブル用データ（すべてのフィルタを適用）
+    const filteredData = baseData.filter(d => filterPerson === 'ALL' || d.person === filterPerson);
+    filteredData.sort((a, b) => a.date.localeCompare(b.date));
+
+    const dailyData = {};
+    const stockStats = {};
+
+    // 全体（フィルタ後）の勝率を計算（平均ライン用）
+    let totalWinsFiltered = 0;
+
+    filteredData.forEach(d => {
+        if(!dailyData[d.date]) dailyData[d.date] = { profit: 0, trades: 0, wins: 0 };
+        dailyData[d.date].profit += d.profit;
+        dailyData[d.date].trades += 1;
+        if(d.profit >= 0) {
+            dailyData[d.date].wins += 1;
+            totalWinsFiltered++;
+        }
+
+        if (!stockStats[d.stock]) {
+            stockStats[d.stock] = { trades: 0, wins: 0, losses: 0, grossProfit: 0, grossLoss: 0, winHoldSum: 0, winHoldCount: 0, lossHoldSum: 0, lossHoldCount: 0 };
+        }
+        const s = stockStats[d.stock];
+        s.trades++;
+        if (d.profit >= 0) {
+            s.wins++; s.grossProfit += d.profit;
+            if (d.holdTime !== null) { s.winHoldSum += d.holdTime; s.winHoldCount++; }
+        } else {
+            s.losses++; s.grossLoss += Math.abs(d.profit);
+            if (d.holdTime !== null) { s.lossHoldSum += d.holdTime; s.lossHoldCount++; }
+        }
+    });
+
+    const overallWinRate = filteredData.length > 0 ? (totalWinsFiltered / filteredData.length) * 100 : 0;
+
+    const calendarContainer = document.getElementById('calendarContainer');
+    calendarContainer.innerHTML = '';
+    const sortedDates = Object.keys(dailyData).sort();
+    
+    if(sortedDates.length === 0) {
+        calendarContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #7f8c8d; font-size: 16px;">データがありません</div>';
+    } else {
+        sortedDates.forEach(date => {
+            const dayInfo = dailyData[date];
+            const isWin = dayInfo.profit >= 0;
+            const card = document.createElement('div');
+            card.className = `day-card ${isWin ? 'win' : 'lose'}`;
+            card.innerHTML = `<div class="day-date">${date}</div><div class="day-profit ${isWin ? 'positive' : 'negative'}">${dayInfo.profit > 0 ? '+' : ''}${dayInfo.profit.toLocaleString()}円</div><div class="day-count">${dayInfo.trades}回トレード</div>`;
+            calendarContainer.appendChild(card);
+        });
+    }
+
+    // --- グラフデータの生成 ---
+    let cumP = 0;
+    const chartLabels = [];
+    const chartCumProfit = [];
+    
+    // 勝率グラフ用（2/25以降のみ対象）
+    const winChartLabels = [];
+    const chartDailyWinRate = [];
+
+    sortedDates.forEach(date => {
+        const dayInfo = dailyData[date];
+        cumP += dayInfo.profit;
+        
+        chartLabels.push(date);
+        chartCumProfit.push(cumP);
+        
+        // 2/25以降のデータのみ勝率グラフの対象にする
+        if (date >= '2026/02/25') {
+            winChartLabels.push(date);
+            const dailyRate = dayInfo.trades > 0 ? (dayInfo.wins / dayInfo.trades) * 100 : 0;
+            chartDailyWinRate.push(dailyRate);
+        }
+    });
+    
+    // 平均勝率ライン（2/25以降のグラフ幅に合わせる）
+    const chartAvgWinRateLine = new Array(winChartLabels.length).fill(overallWinRate);
+
+    if(cumChartInstance) cumChartInstance.destroy();
+    const ctxCum = document.getElementById('cumulativeChart').getContext('2d');
+    cumChartInstance = new Chart(ctxCum, {
+        type: 'line',
+        data: { 
+            labels: chartLabels, 
+            datasets: [{ 
+                label: '累積実現損益(円)', 
+                data: chartCumProfit, 
+                borderColor: '#3498db', 
+                backgroundColor: 'rgba(52, 152, 219, 0.2)', 
+                fill: true, 
+                tension: 0.1,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }] 
+        },
+        options: { 
+            responsive: true, 
+            plugins: { 
+                title: { display: true, text: '累積損益の推移（日次）', font: { size: 16 } },
+                legend: { labels: { font: { size: 14 } } }
+            },
+            scales: {
+                x: { ticks: { font: { size: 13 } } },
+                y: { ticks: { font: { size: 13 } } }
+            }
+        }
+    });
+
+    if(winRateChartInstance) winRateChartInstance.destroy();
+    const ctxWin = document.getElementById('winRateChart').getContext('2d');
+    winRateChartInstance = new Chart(ctxWin, {
+        type: 'line', // 折れ線グラフに変更
+        data: { 
+            labels: winChartLabels, 
+            datasets: [
+                {
+                    label: `全体の平均勝率 (${overallWinRate.toFixed(1)}%)`,
+                    data: chartAvgWinRateLine,
+                    borderColor: '#e74c3c',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false
+                },
+                { 
+                    label: '日別勝率(%)', 
+                    data: chartDailyWinRate, 
+                    borderColor: '#2ecc71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.2)', 
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }
+            ] 
+        },
+        options: { 
+            responsive: true, 
+            plugins: { 
+                title: { display: true, text: '日別の勝率推移（2/25以降）', font: { size: 16 } },
+                legend: { labels: { font: { size: 14 } } }
+            },
+            scales: { 
+                x: { ticks: { font: { size: 13 } } },
+                y: { min: 0, max: 100, ticks: { font: { size: 13 } } } 
+            }
+        }
+    });
+
+    if ($.fn.DataTable.isDataTable('#stockTable')) { $('#stockTable').DataTable().destroy(); }
+    const stockTbody = document.getElementById('stockTableBody');
+    stockTbody.innerHTML = '';
+    for (const [stockName, s] of Object.entries(stockStats)) {
+        const winRate = ((s.wins / s.trades) * 100).toFixed(1);
+        const totalP = s.grossProfit - s.grossLoss;
+        const aWin = s.wins > 0 ? Math.round(s.grossProfit / s.wins) : 0;
+        const aLoss = s.losses > 0 ? Math.round(s.grossLoss / s.losses) : 0;
+        const aWinH = s.winHoldCount > 0 ? Math.round(s.winHoldSum / s.winHoldCount) : '-';
+        const aLossH = s.lossHoldCount > 0 ? Math.round(s.lossHoldSum / s.lossHoldCount) : '-';
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${stockName}</td>
+            <td>${s.trades}</td>
+            <td>${winRate}%</td>
+            <td class="${totalP >= 0 ? 'positive' : 'negative'} font-weight-bold">${totalP.toLocaleString()}</td>
+            <td class="positive">+${aWin.toLocaleString()}</td>
+            <td class="negative">-${aLoss.toLocaleString()}</td>
+            <td>${aWinH}</td>
+            <td>${aLossH}</td>
+        `;
+        stockTbody.appendChild(tr);
+    }
+    $('#stockTable').DataTable({
+        pageLength: 10,
+        order: [[3, 'asc']],
+        language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/ja.json" },
+        searching: true,
+        info: false
+    });
+
+    if ($.fn.DataTable.isDataTable('#dataTable')) { $('#dataTable').DataTable().destroy(); }
+    const tbody = document.getElementById('dataTableBody');
+    tbody.innerHTML = '';
+    [...filteredData].reverse().forEach(d => {
+        const tr = document.createElement('tr');
+        const holdStr = d.holdTime !== null ? `${d.holdTime}分` : '-';
+        tr.innerHTML = `
+            <td>${d.date}</td>
+            <td>${d.person}</td>
+            <td>${d.stock}</td>
+            <td>${d.result}</td>
+            <td class="${d.profit >= 0 ? 'positive' : 'negative'} font-weight-bold">${d.profit.toLocaleString()}</td>
+            <td>${holdStr}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+    $('#dataTable').DataTable({
+        pageLength: 15,
+        order: [[0, 'desc']],
+        language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/ja.json" },
+        searching: true
+    });
+}
+
+window.onload = function() {
+    initMemo();
+    initializeFilters();
+    updateDashboard();
+};
+</script>
+</body>
+</html>
