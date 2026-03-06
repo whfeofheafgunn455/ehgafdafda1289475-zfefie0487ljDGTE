@@ -72,12 +72,58 @@
 
         .calendar-grid-actual { display: grid; grid-template-columns: repeat(7, 1fr); background: #fff; border-top: 1px solid #eee; border-left: 1px solid #eee;}
         .cal-day-name { text-align: center; padding: 10px 0; font-size: 14px; color: #7f8c8d; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
-        .cal-cell { min-height: 80px; padding: 6px 2px; display: flex; flex-direction: column; align-items: center; border-right: 1px solid #eee; border-bottom: 1px solid #eee; background-color: #fff;}
-        .cal-cell.empty { background: #fafafa; }
-        .cal-date { font-size: 14px; color: #555; margin-bottom: auto; }
-        .cal-profit { font-size: 13px; font-weight: bold; margin-top: 4px; text-align: center; word-break: break-all;}
+        
+        /* セルとツールチップのスタイル */
+        .cal-cell { position: relative; min-height: 80px; padding: 6px 2px; display: flex; flex-direction: column; align-items: center; border-right: 1px solid #eee; border-bottom: 1px solid #eee; background-color: #fff; cursor: pointer; }
+        .cal-cell.empty { background: #fafafa; cursor: default; }
+        .cal-date { font-size: 14px; color: #555; margin-bottom: auto; pointer-events: none; }
+        .cal-profit { font-size: 13px; font-weight: bold; margin-top: 4px; text-align: center; word-break: break-all; pointer-events: none; }
         .cal-profit.positive-cal { color: #5DADE2; } 
         .cal-profit.negative-cal { color: #E74C3C; } 
+
+        .cal-tooltip {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(44, 62, 80, 0.95);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 13px;
+            white-space: nowrap;
+            z-index: 1000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            text-align: left;
+            margin-bottom: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .cal-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -6px;
+            border-width: 6px;
+            border-style: solid;
+            border-color: rgba(44, 62, 80, 0.95) transparent transparent transparent;
+        }
+        
+        /* ツールチップ内のレイアウト */
+        .tooltip-row { display: flex; justify-content: space-between; gap: 20px; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .tooltip-row:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+        .tt-person { color: #bdc3c7; font-size: 11px; margin-right: 5px; }
+        .tt-stock { font-weight: bold; }
+        .tt-val.positive { color: #2ecc71; }
+        .tt-val.negative { color: #e74c3c; }
+
+        /* ホバーまたはタップ時（activeクラス付与）に表示 */
+        @media (hover: hover) {
+            .cal-cell:hover .cal-tooltip { display: block; }
+        }
+        .cal-cell.active-tooltip .cal-tooltip { display: block; }
         /* ------------------------------------- */
 
         .charts-container { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
@@ -120,6 +166,9 @@
             .month-total { font-size: 14px; padding: 4px 12px; }
             .cal-cell { min-height: 60px; padding: 4px 2px; }
             .cal-profit { font-size: 11px; margin-top: 2px;}
+
+            /* スマホ画面でツールチップが画面外にはみ出ないように調整 */
+            .cal-tooltip { font-size: 11px; padding: 8px 10px; }
 
             .chart-box { padding: 10px; }
             .chart-container-inner { height: 300px; }
@@ -356,6 +405,23 @@
     window.updateDashboard = updateDashboard;
     window.resetFilters = resetFilters;
 
+    // スマホのタップでツールチップを開閉するためのグローバルイベント
+    document.addEventListener('click', function(e) {
+        const clickedCell = e.target.closest('.cal-cell');
+        
+        // すべてのセルのツールチップを一旦閉じる
+        document.querySelectorAll('.cal-cell.active-tooltip').forEach(cell => {
+            if (cell !== clickedCell) {
+                cell.classList.remove('active-tooltip');
+            }
+        });
+
+        // クリックしたセルにツールチップがあれば開閉を切り替える
+        if (clickedCell && clickedCell.querySelector('.cal-tooltip')) {
+            clickedCell.classList.toggle('active-tooltip');
+        }
+    });
+
     async function loadDataFromFirebase() {
         try {
             const docSnap = await getDoc(tradeDataRef);
@@ -543,14 +609,29 @@
 
             let dateHtml = `<div class="cal-date">${day}</div>`;
             let profitHtml = '';
+            let tooltipHtml = '';
 
             if (dayData) {
                 monthTotal += dayData.profit;
                 const profitClass = dayData.profit >= 0 ? 'positive-cal' : 'negative-cal';
                 profitHtml = `<div class="cal-profit ${profitClass}">¥${dayData.profit.toLocaleString()}</div>`;
+                
+                // ツールチップの内容を生成
+                tooltipHtml = `<div class="cal-tooltip">`;
+                dayData.details.forEach(trade => {
+                    const tClass = trade.profit >= 0 ? 'positive' : 'negative';
+                    const sign = trade.profit > 0 ? '+' : '';
+                    tooltipHtml += `
+                        <div class="tooltip-row">
+                            <div><span class="tt-person">${trade.person}</span><span class="tt-stock">${trade.stock}</span></div>
+                            <div class="tt-val ${tClass}">${sign}¥${trade.profit.toLocaleString()}</div>
+                        </div>
+                    `;
+                });
+                tooltipHtml += `</div>`;
             }
 
-            cell.innerHTML = dateHtml + profitHtml;
+            cell.innerHTML = dateHtml + profitHtml + tooltipHtml;
             grid.appendChild(cell);
         }
 
@@ -596,9 +677,12 @@
         let totalWinsFiltered = 0;
 
         filteredData.forEach(d => {
-            if(!dailyData[d.date]) dailyData[d.date] = { profit: 0, trades: 0, wins: 0 };
+            if(!dailyData[d.date]) dailyData[d.date] = { profit: 0, trades: 0, wins: 0, details: [] };
+            
             dailyData[d.date].profit += d.profit;
             dailyData[d.date].trades += 1;
+            dailyData[d.date].details.push(d); // ツールチップ用に各トレードの明細を保存
+
             if(d.profit >= 0) {
                 dailyData[d.date].wins += 1;
                 totalWinsFiltered++;
