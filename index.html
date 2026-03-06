@@ -616,9 +616,16 @@
                 const profitClass = dayData.profit >= 0 ? 'positive-cal' : 'negative-cal';
                 profitHtml = `<div class="cal-profit ${profitClass}">¥${dayData.profit.toLocaleString()}</div>`;
                 
-                // ツールチップの内容を生成
+                // ツールチップの内容を生成 (取引主体順 ＞ 損益額の大きい順にソート)
                 tooltipHtml = `<div class="cal-tooltip">`;
-                dayData.details.forEach(trade => {
+                const sortedDetails = [...dayData.details].sort((a, b) => {
+                    if (a.person !== b.person) {
+                        return a.person.localeCompare(b.person);
+                    }
+                    return b.profit - a.profit; // 利益の大きい順（降順）
+                });
+                
+                sortedDetails.forEach(trade => {
                     const tClass = trade.profit >= 0 ? 'positive' : 'negative';
                     const sign = trade.profit > 0 ? '+' : '';
                     tooltipHtml += `
@@ -681,7 +688,7 @@
             
             dailyData[d.date].profit += d.profit;
             dailyData[d.date].trades += 1;
-            dailyData[d.date].details.push(d); // ツールチップ用に各トレードの明細を保存
+            dailyData[d.date].details.push(d);
 
             if(d.profit >= 0) {
                 dailyData[d.date].wins += 1;
