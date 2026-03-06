@@ -56,26 +56,28 @@
         .save-status { font-size: 12px; color: #7f8c8d; font-weight: normal; }
         
         /* -------------------------------------
-           本格的カレンダー表示用のスタイル
+           2ヶ月並列カレンダーのスタイル
            ------------------------------------- */
-        .calendar-wrapper { background: var(--card-bg); padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px; }
-        .calendar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-        .calendar-header-left { display: flex; align-items: center; gap: 15px; }
-        .calendar-header-left h3 { margin: 0; font-size: 22px; color: #333; font-weight: normal; }
-        .month-nav-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #555; padding: 5px 15px; border-radius: 4px; transition: background 0.2s;}
-        .month-nav-btn:hover { background: #f0f0f0; }
-        .month-total { font-size: 18px; font-weight: bold; padding: 6px 20px; border-radius: 20px; color: white; display: inline-block; }
-        .month-total.positive-bg { background-color: #5DADE2; } /* 画像風の水色 */
-        .month-total.negative-bg { background-color: #E74C3C; } /* 赤色 */
+        .month-nav-btn { background: #e0e0e0; border: none; font-size: 14px; font-weight: bold; cursor: pointer; color: #333; padding: 6px 12px; border-radius: 4px; transition: background 0.2s;}
+        .month-nav-btn:hover { background: #ccc; }
+
+        .calendars-container { display: flex; gap: 20px; margin-bottom: 30px; }
+        .calendar-wrapper { flex: 1; background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        .calendar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+        .calendar-header h3 { margin: 0; font-size: 20px; color: #333; font-weight: bold; }
+        .month-total { font-size: 16px; font-weight: bold; padding: 6px 16px; border-radius: 20px; color: white; display: inline-block; }
+        .month-total.positive-bg { background-color: #5DADE2; } 
+        .month-total.negative-bg { background-color: #E74C3C; } 
 
         .calendar-grid-actual { display: grid; grid-template-columns: repeat(7, 1fr); background: #fff; border-top: 1px solid #eee; border-left: 1px solid #eee;}
-        .cal-day-name { text-align: center; padding: 12px 0; font-size: 15px; color: #7f8c8d; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
-        .cal-cell { min-height: 90px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; border-right: 1px solid #eee; border-bottom: 1px solid #eee; background-color: #fff;}
+        .cal-day-name { text-align: center; padding: 10px 0; font-size: 14px; color: #7f8c8d; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
+        .cal-cell { min-height: 80px; padding: 6px 2px; display: flex; flex-direction: column; align-items: center; border-right: 1px solid #eee; border-bottom: 1px solid #eee; background-color: #fff;}
         .cal-cell.empty { background: #fafafa; }
-        .cal-date { font-size: 16px; color: #555; margin-bottom: auto; }
-        .cal-profit { font-size: 14px; font-weight: bold; margin-top: 5px; text-align: center; word-break: break-all;}
-        .cal-profit.positive-cal { color: #5DADE2; } /* 画像風の水色テキスト */
-        .cal-profit.negative-cal { color: #E74C3C; } /* 赤色テキスト */
+        .cal-date { font-size: 14px; color: #555; margin-bottom: auto; }
+        .cal-profit { font-size: 13px; font-weight: bold; margin-top: 4px; text-align: center; word-break: break-all;}
+        .cal-profit.positive-cal { color: #5DADE2; } 
+        .cal-profit.negative-cal { color: #E74C3C; } 
         /* ------------------------------------- */
 
         .charts-container { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
@@ -87,11 +89,15 @@
         table.dataTable thead th { background-color: #f8f9fa; color: #2c3e50; font-size: 14px; padding: 12px 10px; white-space: nowrap; }
         table.dataTable tbody td { font-size: 14px; vertical-align: middle; padding: 12px 10px; white-space: nowrap; }
 
+        /* スマホ用レスポンシブ */
         @media screen and (max-width: 900px) {
             .kpi-row { flex-direction: column; }
             .kpi-grid { grid-template-columns: repeat(2, 1fr); }
             .charts-container { flex-direction: column; }
             .chart-box { min-width: 100%; width: 100%; box-sizing: border-box; }
+            
+            /* スマホ時は過去の月（左側）を非表示にして1ヶ月だけ表示する */
+            .calendar-left { display: none; }
         }
 
         @media screen and (max-width: 600px) {
@@ -109,16 +115,11 @@
             .save-status { align-self: flex-end; }
             .section-title { font-size: 18px; margin: 25px 0 10px 0; }
             
-            /* スマホ用カレンダー調整 */
             .calendar-wrapper { padding: 10px; }
-            .calendar-header { flex-direction: row; }
-            .calendar-header-left h3 { font-size: 18px; }
-            .month-nav-btn { font-size: 16px; padding: 5px 10px; }
+            .calendar-header h3 { font-size: 18px; }
             .month-total { font-size: 14px; padding: 4px 12px; }
             .cal-cell { min-height: 60px; padding: 4px 2px; }
-            .cal-date { font-size: 14px; }
             .cal-profit { font-size: 11px; margin-top: 2px;}
-            .cal-day-name { font-size: 12px; padding: 8px 0; }
 
             .chart-box { padding: 10px; }
             .chart-container-inner { height: 300px; }
@@ -245,27 +246,34 @@
         </div>
     </div>
 
-    <div class="section-title">📅 日次損益カレンダー</div>
-    <div class="calendar-wrapper">
-        <div class="calendar-header">
-            <div class="calendar-header-left">
-                <button id="prevMonthBtn" class="month-nav-btn">◀</button>
-                <h3 id="calendarMonthLabel">--年--月</h3>
+    <div class="section-title">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            📅 日次損益カレンダー
+            <button id="prevMonthBtn" class="month-nav-btn" style="margin-left: 10px;">◀ 過去の月へ</button>
+            <button id="nextMonthBtn" class="month-nav-btn">最新の月へ ▶</button>
+        </div>
+    </div>
+    
+    <div class="calendars-container">
+        <div class="calendar-wrapper calendar-left" id="calendarLeft">
+            <div class="calendar-header">
+                <h3 class="calendar-month-label">--年--月</h3>
+                <div class="month-total positive-bg">¥0</div>
             </div>
-            <div id="calendarMonthTotal" class="month-total positive-bg">¥0</div>
-            <div class="calendar-header-right">
-                <button id="nextMonthBtn" class="month-nav-btn">▶</button>
+            <div class="calendar-grid-actual">
+                <div class="cal-day-name">日</div><div class="cal-day-name">月</div><div class="cal-day-name">火</div><div class="cal-day-name">水</div><div class="cal-day-name">木</div><div class="cal-day-name">金</div><div class="cal-day-name">土</div>
             </div>
         </div>
-        <div class="calendar-grid-actual" id="calendarContainer">
-            <div class="cal-day-name">日</div>
-            <div class="cal-day-name">月</div>
-            <div class="cal-day-name">火</div>
-            <div class="cal-day-name">水</div>
-            <div class="cal-day-name">木</div>
-            <div class="cal-day-name">金</div>
-            <div class="cal-day-name">土</div>
+        
+        <div class="calendar-wrapper" id="calendarRight">
+            <div class="calendar-header">
+                <h3 class="calendar-month-label">--年--月</h3>
+                <div class="month-total positive-bg">¥0</div>
             </div>
+            <div class="calendar-grid-actual">
+                <div class="cal-day-name">日</div><div class="cal-day-name">月</div><div class="cal-day-name">火</div><div class="cal-day-name">水</div><div class="cal-day-name">木</div><div class="cal-day-name">金</div><div class="cal-day-name">土</div>
+            </div>
+        </div>
     </div>
 
     <div class="charts-container">
@@ -342,7 +350,6 @@
     let cumChartInstance = null;
     let winRateChartInstance = null;
 
-    // カレンダー用の年月状態保持
     let currentCalYear = new Date().getFullYear();
     let currentCalMonth = new Date().getMonth();
 
@@ -355,10 +362,9 @@
             if (docSnap.exists()) {
                 rawData = docSnap.data().data;
                 
-                // データの中で最新の日付をカレンダーの初期表示月に設定
                 if(rawData.length > 0) {
                     const sortedDates = [...rawData].map(d => d.date).sort();
-                    const latestDate = sortedDates[sortedDates.length - 1]; // "YYYY/MM/DD"
+                    const latestDate = sortedDates[sortedDates.length - 1]; 
                     currentCalYear = parseInt(latestDate.split('/')[0]);
                     currentCalMonth = parseInt(latestDate.split('/')[1]) - 1;
                 }
@@ -504,34 +510,35 @@
         document.getElementById(`${prefix}-hold`).textContent = `${winHoldText} / ${lossHoldText}`;
     }
 
-    function renderCalendar(dailyDataHash) {
-        const grid = document.getElementById('calendarContainer');
-        // セルのクリア（曜日ヘッダーは残す）
+    function renderSingleCalendar(containerId, year, month, dailyDataHash) {
+        const wrapper = document.getElementById(containerId);
+        const grid = wrapper.querySelector('.calendar-grid-actual');
+        const titleLabel = wrapper.querySelector('.calendar-month-label');
+        const totalEl = wrapper.querySelector('.month-total');
+
         const cells = grid.querySelectorAll('.cal-cell');
         cells.forEach(cell => cell.remove());
 
-        document.getElementById('calendarMonthLabel').textContent = `${currentCalYear}年${currentCalMonth + 1}月`;
+        titleLabel.textContent = `${year}年${month + 1}月`;
 
-        const firstDay = new Date(currentCalYear, currentCalMonth, 1);
-        const lastDay = new Date(currentCalYear, currentCalMonth + 1, 0);
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
         const startingDayOfWeek = firstDay.getDay();
         const totalDays = lastDay.getDate();
 
         let monthTotal = 0;
 
-        // 月初の空白セル
         for (let i = 0; i < startingDayOfWeek; i++) {
             const cell = document.createElement('div');
             cell.className = 'cal-cell empty';
             grid.appendChild(cell);
         }
 
-        // 日付セル
         for (let day = 1; day <= totalDays; day++) {
             const cell = document.createElement('div');
             cell.className = 'cal-cell';
             
-            const dateStr = `${currentCalYear}/${String(currentCalMonth + 1).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+            const dateStr = `${year}/${String(month + 1).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
             const dayData = dailyDataHash[dateStr];
 
             let dateHtml = `<div class="cal-date">${day}</div>`;
@@ -540,7 +547,6 @@
             if (dayData) {
                 monthTotal += dayData.profit;
                 const profitClass = dayData.profit >= 0 ? 'positive-cal' : 'negative-cal';
-                const sign = dayData.profit > 0 ? '+' : '';
                 profitHtml = `<div class="cal-profit ${profitClass}">¥${dayData.profit.toLocaleString()}</div>`;
             }
 
@@ -548,7 +554,6 @@
             grid.appendChild(cell);
         }
 
-        // 月末の空白セル（カレンダーを四角く保つため）
         const remainingCells = (startingDayOfWeek + totalDays) % 7;
         if (remainingCells > 0) {
             for (let i = 0; i < 7 - remainingCells; i++) {
@@ -558,7 +563,6 @@
             }
         }
 
-        const totalEl = document.getElementById('calendarMonthTotal');
         totalEl.textContent = `¥${monthTotal.toLocaleString()}`;
         totalEl.className = `month-total ${monthTotal >= 0 ? 'positive-bg' : 'negative-bg'}`;
     }
@@ -614,8 +618,17 @@
             }
         });
 
-        // 新しいカレンダーの描画
-        renderCalendar(dailyData);
+        // 2ヶ月分のカレンダーを描画
+        // 右側：現在の対象月（最新）
+        renderSingleCalendar('calendarRight', currentCalYear, currentCalMonth, dailyData);
+        // 左側：1ヶ月前の月
+        let leftYear = currentCalYear;
+        let leftMonth = currentCalMonth - 1;
+        if (leftMonth < 0) {
+            leftMonth = 11;
+            leftYear--;
+        }
+        renderSingleCalendar('calendarLeft', leftYear, leftMonth, dailyData);
 
         const overallWinRate = filteredData.length > 0 ? (totalWinsFiltered / filteredData.length) * 100 : 0;
         const sortedDates = Object.keys(dailyData).sort();
