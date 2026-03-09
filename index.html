@@ -747,31 +747,42 @@
             options: { ...commonChartOptions, plugins: { title: { display: true, text: '日別の勝率推移（2/25以降）', font: { size: 16 } }, legend: { labels: { font: { size: 14 } } } }, scales: { ...commonChartOptions.scales, y: { min: 0, max: 100, ticks: { font: { size: 12 } } } } }
         });
 
-        // --- 時間帯別 勝率グラフ描画 ---
+        // --- 時間帯別 勝率グラフ描画（折れ線グラフに変更） ---
         const chartLabelsTZ = timeZones.map(tz => `${parseInt(tz, 10)}時台`);
-        const winRateA_TZ = timeZones.map(tz => tzStatsA[tz].trades > 0 ? (tzStatsA[tz].wins / tzStatsA[tz].trades) * 100 : 0);
-        const winRateB_TZ = timeZones.map(tz => tzStatsB[tz].trades > 0 ? (tzStatsB[tz].wins / tzStatsB[tz].trades) * 100 : 0);
+        const winRateA_TZ = timeZones.map(tz => tzStatsA[tz].trades > 0 ? (tzStatsA[tz].wins / tzStatsA[tz].trades) * 100 : null); // データがない場合はnullにして線を繋がないようにする手もあるが、今回は0で処理
+        const winRateB_TZ = timeZones.map(tz => tzStatsB[tz].trades > 0 ? (tzStatsB[tz].wins / tzStatsB[tz].trades) * 100 : null);
+
+        // 取引が全くない時間帯はグラフの点（ドット）を非表示にするための処理
+        const processedWinRateA_TZ = timeZones.map(tz => tzStatsA[tz].trades > 0 ? (tzStatsA[tz].wins / tzStatsA[tz].trades) * 100 : NaN);
+        const processedWinRateB_TZ = timeZones.map(tz => tzStatsB[tz].trades > 0 ? (tzStatsB[tz].wins / tzStatsB[tz].trades) * 100 : NaN);
+
 
         if(timeZoneChartInstance) timeZoneChartInstance.destroy();
         const ctxTz = document.getElementById('timeZoneWinRateChart').getContext('2d');
         timeZoneChartInstance = new Chart(ctxTz, {
-            type: 'bar',
+            type: 'line', // bar から line に変更
             data: {
                 labels: chartLabelsTZ,
                 datasets: [
                     {
                         label: '🟣 トレーダーA 勝率(%)',
-                        data: winRateA_TZ,
-                        backgroundColor: 'rgba(155, 89, 182, 0.7)',
+                        data: processedWinRateA_TZ,
                         borderColor: '#8e44ad',
-                        borderWidth: 1
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: false, // 塗りつぶしなし
+                        pointRadius: 4,
+                        spanGaps: true // データがない時間帯は線を繋ぐ
                     },
                     {
                         label: '🟠 トレーダーB 勝率(%)',
-                        data: winRateB_TZ,
-                        backgroundColor: 'rgba(230, 126, 34, 0.7)',
+                        data: processedWinRateB_TZ,
                         borderColor: '#d35400',
-                        borderWidth: 1
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: false, // 塗りつぶしなし
+                        pointRadius: 4,
+                        spanGaps: true // データがない時間帯は線を繋ぐ
                     }
                 ]
             },
