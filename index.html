@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- キャッシュ対策のメタタグを追加 -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>底値・単価比較</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -93,13 +97,12 @@
               </div>
             </button>
 
-            <!-- 【修正箇所】展開時の詳細レコード (ボタンを独立行にして文字被りを防ぐ) -->
+            <!-- 展開時の詳細レコード (物理的に文字被りを防ぐフレックスボックス構造) -->
             <div v-if="expandedGroup === group.subName" class="bg-gray-50/50 p-3 space-y-2 border-t border-gray-100">
-              <div v-for="(rec, idx) in group.records" :key="rec.id" class="bg-white p-3 rounded-xl border flex flex-col gap-2 shadow-sm" :class="getStoreTheme(rec.store).border">
+              <div v-for="(rec, idx) in group.records" :key="rec.id" class="bg-white p-3 rounded-xl border shadow-sm" :class="getStoreTheme(rec.store).border">
                 
-                <!-- 上段: 情報表示 -->
+                <!-- 上段：店舗情報と価格（横並び） -->
                 <div class="flex justify-between items-start gap-2">
-                  <!-- 左側コンテンツ -->
                   <div class="flex-1 min-w-0">
                     <div class="text-sm font-bold flex items-center gap-1" :class="getStoreTheme(rec.store).text">
                       {{ getStoreIcon(rec.store) }} {{ rec.store }}
@@ -110,7 +113,6 @@
                     <div v-if="getStoreDiscount(rec.store) > 0" class="text-[10px] text-red-500 font-bold mt-1">({{ getStoreDiscount(rec.store) }}%割引後)</div>
                   </div>
                   
-                  <!-- 右側価格コンテンツ -->
                   <div class="text-right shrink-0">
                     <div class="font-black text-gray-800 text-lg leading-none">{{ formatYen(Math.round(rec.effectivePrice)) }}</div>
                     <div v-if="getStoreDiscount(rec.store) > 0" class="text-[10px] text-gray-400 mt-1 line-through">店頭: {{ formatYen(rec.price) }}</div>
@@ -118,14 +120,14 @@
                   </div>
                 </div>
 
-                <!-- 下段: アクションボタン (絶対に文字と被らないよう別行に配置) -->
-                <div class="flex justify-end gap-2 pt-2 mt-1 border-t border-gray-50">
-                  <button @click.stop="editRecord(rec)" class="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-500 rounded-lg border border-blue-100 active:scale-95 text-xs font-bold">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                <!-- 下段：編集・削除ボタン（絶対に文字と被らないよう専用の行として配置） -->
+                <div class="flex justify-end gap-2 pt-3 mt-2 border-t border-gray-50">
+                  <button @click.stop="editRecord(rec)" class="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-500 rounded-lg border border-blue-100 active:scale-95 text-xs font-bold shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                     編集
                   </button>
-                  <button @click.stop="deleteRecord(rec.id)" class="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-500 rounded-lg border border-red-100 active:scale-95 text-xs font-bold">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                  <button @click.stop="deleteRecord(rec.id)" class="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-500 rounded-lg border border-red-100 active:scale-95 text-xs font-bold shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     削除
                   </button>
                 </div>
@@ -148,10 +150,10 @@
         <section v-show="activeView === 'store'" class="p-2 space-y-3">
           <div v-if="storeBuyList.length === 0" class="text-center text-gray-400 py-10 font-bold">この店舗が最安値の商品はありません</div>
           
-          <div v-for="group in storeBuyList" :key="group.subName" class="bg-white rounded-2xl p-4 shadow-sm border flex items-center gap-3 relative" :class="getStoreTheme(activeStoreTab).border">
+          <div v-for="group in storeBuyList" :key="group.subName" class="bg-white rounded-2xl p-4 shadow-sm border flex items-center justify-between gap-3" :class="getStoreTheme(activeStoreTab).border">
             
             <input type="checkbox" :id="'check-' + group.subName" v-model="cartChecked[group.subName]" class="checkbox-custom hidden">
-            <label :for="'check-' + group.subName" class="flex-1 flex items-center gap-3 cursor-pointer transition-all duration-200 min-w-0 pr-16">
+            <label :for="'check-' + group.subName" class="flex-1 flex items-center gap-3 cursor-pointer transition-all duration-200 min-w-0">
               
               <div class="w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors" :class="cartChecked[group.subName] ? 'bg-orange-500 border-orange-500' : 'border-gray-300'">
                 <svg v-show="cartChecked[group.subName]" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
@@ -170,7 +172,7 @@
             </label>
 
             <!-- 右側の価格表示 -->
-            <div class="absolute right-4 top-1/2 -translate-y-1/2 text-right shrink-0" :class="{'opacity-50': cartChecked[group.subName]}">
+            <div class="text-right shrink-0" :class="{'opacity-50': cartChecked[group.subName]}">
               <div class="font-black text-xl leading-none" :class="getStoreTheme(activeStoreTab).text">{{ formatYen(Math.round(group.bestRecord.effectivePrice)) }}</div>
               <div class="text-[10px] text-gray-400 mt-1">{{ formatUnitPrice(group.bestRecord) }}</div>
             </div>
