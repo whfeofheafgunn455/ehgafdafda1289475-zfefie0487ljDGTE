@@ -1,897 +1,719 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="robots" content="noindex, nofollow">
-    <title>トレード実績 振り返りダッシュボード</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    
-    <style>
-        :root { --bg-color: #f4f7f6; --card-bg: #ffffff; --text-main: #333333; --border-color: #e0e0e0; }
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; font-size: 16px; }
-        .container { max-width: 1500px; margin: 0 auto; }
-        
-        .header-area { margin-bottom: 25px; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
-        h1 { font-size: 28px; color: #2c3e50; margin: 0; line-height: 1.3; }
-        
-        #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; justify-content: center; align-items: center; font-size: 20px; color: #555; }
-        
-        .controls { background: var(--card-bg); padding: 18px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 25px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
-        .control-group { display: flex; align-items: center; gap: 8px; font-size: 15px; }
-        select, input[type="date"] { padding: 10px 12px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 4px; background-color: #fff; }
-        .reset-btn { padding: 10px 20px; background-color: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 15px; width: auto; }
-        
-        .kpi-wrapper { display: flex; flex-direction: column; gap: 20px; margin-bottom: 30px; }
-        .kpi-row { display: flex; gap: 20px; }
-        .kpi-column { flex: 1; background: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .kpi-column.total-col { background: #eaf2f8; border-color: #3498db; }
-        .kpi-column.total-col h3 { border-bottom-color: #3498db; color: #2980b9; }
-        .kpi-column.traderA-col { background: #f4ecf7; border-color: #9b59b6; }
-        .kpi-column.traderA-col h3 { border-bottom-color: #9b59b6; color: #8e44ad; }
-        .kpi-column.traderB-col { background: #fdf2e9; border-color: #e67e22; }
-        .kpi-column.traderB-col h3 { border-bottom-color: #e67e22; color: #d35400; }
-        .kpi-column h3 { margin-top: 0; margin-bottom: 18px; text-align: center; border-bottom: 2px solid #bdc3c7; padding-bottom: 10px; font-size: 22px; font-weight: bold; }
-        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
-        .kpi-grid-half { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-        .kpi-card { background: var(--card-bg); padding: 18px 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; display: flex; flex-direction: column; justify-content: center; }
-        .kpi-title { font-size: 13px; color: #7f8c8d; margin-bottom: 10px; font-weight: bold; }
-        .kpi-value { font-size: 24px; font-weight: bold; color: #2c3e50; }
-        .kpi-value.small-text { font-size: 18px; }
-        .kpi-sub { font-size: 13px; color: #95a5a6; margin-top: 10px; }
-        .positive { color: #27ae60 !important; }
-        .negative { color: #e74c3c !important; }
-
-        .section-title { font-size: 20px; color: #2c3e50; margin: 35px 0 15px 0; border-left: 5px solid #3498db; padding-left: 12px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; flex-wrap: wrap; gap: 10px; }
-        
-        .memo-container { display: flex; gap: 20px; margin-bottom: 30px; }
-        .memo-wrapper { flex: 1; background: var(--card-bg); padding: 18px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .memo-wrapper h4 { margin-top: 0; margin-bottom: 12px; font-size: 18px; display: flex; justify-content: space-between; align-items: center;}
-        .memo-wrapper.traderA-memo h4 { color: #8e44ad; border-bottom: 2px solid #9b59b6; padding-bottom: 5px; }
-        .memo-wrapper.traderB-memo h4 { color: #d35400; border-bottom: 2px solid #e67e22; padding-bottom: 5px; }
-        textarea.memo-box { width: 100%; height: 140px; padding: 15px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 16px; font-family: inherit; resize: vertical; box-sizing: border-box; line-height: 1.5; }
-        .save-status { font-size: 12px; color: #7f8c8d; font-weight: normal; }
-        
-        .month-nav-btn { background: #e0e0e0; border: none; font-size: 14px; font-weight: bold; cursor: pointer; color: #333; padding: 6px 12px; border-radius: 4px; transition: background 0.2s;}
-        .month-nav-btn:hover { background: #ccc; }
-
-        .calendars-container { display: flex; gap: 20px; margin-bottom: 30px; }
-        .calendar-wrapper { flex: 1; background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .calendar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
-        .calendar-header h3 { margin: 0; font-size: 20px; color: #333; font-weight: bold; }
-        .month-total { font-size: 16px; font-weight: bold; padding: 6px 16px; border-radius: 20px; color: white; display: inline-block; }
-        .month-total.positive-bg { background-color: #5DADE2; } 
-        .month-total.negative-bg { background-color: #E74C3C; } 
-        .calendar-grid-actual { display: grid; grid-template-columns: repeat(7, 1fr); background: #fff; border-top: 1px solid #eee; border-left: 1px solid #eee;}
-        .cal-day-name { text-align: center; padding: 10px 0; font-size: 14px; color: #7f8c8d; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
-        .cal-cell { position: relative; min-height: 80px; padding: 6px 2px; display: flex; flex-direction: column; align-items: center; border-right: 1px solid #eee; border-bottom: 1px solid #eee; background-color: #fff; cursor: pointer; }
-        .cal-cell.empty { background: #fafafa; cursor: default; }
-        .cal-date { font-size: 14px; color: #555; margin-bottom: auto; pointer-events: none; }
-        .cal-profit { font-size: 13px; font-weight: bold; margin-top: 4px; text-align: center; word-break: break-all; pointer-events: none; }
-        .cal-profit.positive-cal { color: #5DADE2; } 
-        .cal-profit.negative-cal { color: #E74C3C; } 
-        .cal-tooltip { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: rgba(44, 62, 80, 0.95); color: #fff; padding: 10px 15px; border-radius: 6px; font-size: 13px; white-space: nowrap; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: left; margin-bottom: 8px; max-height: 250px; overflow-y: auto; }
-        .cal-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: rgba(44, 62, 80, 0.95) transparent transparent transparent; }
-        .tooltip-row { display: flex; justify-content: space-between; gap: 20px; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .tooltip-row:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
-        .tt-person { color: #bdc3c7; font-size: 11px; margin-right: 5px; }
-        .tt-stock { font-weight: bold; }
-        .tt-val.positive { color: #2ecc71; }
-        .tt-val.negative { color: #e74c3c; }
-        @media (hover: hover) { .cal-cell:hover .cal-tooltip { display: block; } }
-        .cal-cell.active-tooltip .cal-tooltip { display: block; }
-
-        .charts-container { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
-        .chart-box { flex: 1; min-width: 45%; background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .chart-container-inner { position: relative; height: 350px; width: 100%; }
-        
-        .table-container { background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        table.dataTable { width: 100% !important; }
-        table.dataTable thead th { background-color: #f8f9fa; color: #2c3e50; font-size: 14px; padding: 12px 10px; white-space: nowrap; }
-        table.dataTable tbody td { font-size: 14px; vertical-align: middle; padding: 12px 10px; white-space: nowrap; }
-
-        @media screen and (max-width: 900px) {
-            .kpi-row { flex-direction: column; }
-            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-            .charts-container { flex-direction: column; }
-            .chart-box { min-width: 100%; width: 100%; box-sizing: border-box; }
-            .calendar-left { display: none; }
-        }
-        @media screen and (max-width: 600px) {
-            body { padding: 10px; }
-            h1 { font-size: 22px; margin-bottom: 0; }
-            .controls { flex-direction: column; align-items: stretch; padding: 15px; gap: 10px; }
-            .control-group { flex-direction: column; align-items: stretch; margin-left: 0 !important; }
-            select, input[type="date"] { width: 100%; box-sizing: border-box; }
-            .reset-btn { width: 100%; margin-top: 10px; padding: 12px; }
-            .kpi-column { padding: 15px; }
-            .kpi-grid, .kpi-grid-half { grid-template-columns: 1fr; }
-            .kpi-card { padding: 15px; }
-            .memo-container { flex-direction: column; gap: 15px; }
-            .memo-wrapper h4 { flex-direction: column; align-items: flex-start; gap: 5px; }
-            .section-title { font-size: 18px; margin: 25px 0 10px 0; }
-            .calendar-wrapper { padding: 10px; }
-            .calendar-header h3 { font-size: 18px; }
-            .month-total { font-size: 14px; padding: 4px 12px; }
-            .cal-cell { min-height: 60px; padding: 4px 2px; }
-            .cal-profit { font-size: 11px; margin-top: 2px;}
-            .cal-tooltip { font-size: 11px; padding: 8px 10px; }
-            .chart-box { padding: 10px; }
-            .chart-container-inner { height: 300px; }
-            .table-container { padding: 10px; }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>底値・単価比較</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    [v-cloak] { display: none; }
+    .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+    .fade-enter-from, .fade-leave-to { opacity: 0; }
+    .bg-theme { background-color: #F59E0B; }
+    .text-theme { color: #F59E0B; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    input[type="search"]::-webkit-search-cancel-button { display: none; }
+    .checkbox-custom:checked + label { text-decoration: line-through; opacity: 0.5; }
+  </style>
 </head>
-<body>
-
-<div id="loadingOverlay">読み込み中...</div>
-
-<div class="container" style="display: none;" id="mainContent">
-    <div class="header-area">
-        <h1>📊 トレード実績 振り返りダッシュボード</h1>
-    </div>
-
-    <div class="controls">
-        <div class="control-group">
-            <span style="font-size: 14px; color: #7f8c8d; font-weight: bold; margin-bottom: 5px;">※グラフ・テーブル表示用フィルタ</span>
-            <label for="personFilter"><strong>取引主体:</strong></label>
-            <select id="personFilter" onchange="updateDashboard()">
-                <option value="ALL">すべて</option>
-                <option value="トレーダーA">トレーダーA</option>
-                <option value="トレーダーB">トレーダーB</option>
-            </select>
-        </div>
-        <div class="control-group" style="margin-left: 15px;">
-            <label for="stockFilter"><strong>銘柄名:</strong></label>
-            <select id="stockFilter" onchange="updateDashboard()">
-                <option value="ALL">すべて</option>
-            </select>
-        </div>
-        <div class="control-group">
-            <label for="startDate"><strong>開始日:</strong></label>
-            <input type="date" id="startDate" onchange="updateDashboard()">
-        </div>
-        <div class="control-group">
-            <label for="endDate"><strong>終了日:</strong></label>
-            <input type="date" id="endDate" onchange="updateDashboard()">
-        </div>
-        <button class="reset-btn" onclick="resetFilters()">条件リセット</button>
-    </div>
-
-    <div class="kpi-wrapper">
-        <div class="kpi-column total-col">
-            <h3>🌟 全体の成績</h3>
-            <div class="kpi-grid">
-                <div class="kpi-card">
-                    <div class="kpi-title">累計実現損益(税引前)</div>
-                    <div class="kpi-value" id="total-profit">0円</div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-title">勝率 (取引回数)</div>
-                    <div class="kpi-value" id="total-winrate">0%</div>
-                    <div class="kpi-sub" id="total-trades">0回中 0勝</div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-title">平均利益 / 平均損失</div>
-                    <div class="kpi-value small-text" id="total-avg">0円 / 0円</div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-title">平均保有時間 (益出し / 損切り)</div>
-                    <div class="kpi-value small-text" id="total-hold">0分 / 0分</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="kpi-row">
-            <div class="kpi-column traderA-col">
-                <h3>🟣 トレーダーA の成績</h3>
-                <div class="kpi-grid-half">
-                    <div class="kpi-card">
-                        <div class="kpi-title">累計実現損益(税引前)</div>
-                        <div class="kpi-value" id="traderA-profit">0円</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-title">勝率 (取引回数)</div>
-                        <div class="kpi-value" id="traderA-winrate">0%</div>
-                        <div class="kpi-sub" id="traderA-trades">0回中 0勝</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-title">平均利益 / 平均損失</div>
-                        <div class="kpi-value small-text" id="traderA-avg">0円 / 0円</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-title">平均保有時間 (益出し / 損切り)</div>
-                        <div class="kpi-value small-text" id="traderA-hold">0分 / 0分</div>
-                    </div>
-                </div>
-            </div>
-            <div class="kpi-column traderB-col">
-                <h3>🟠 トレーダーB の成績</h3>
-                <div class="kpi-grid-half">
-                    <div class="kpi-card">
-                        <div class="kpi-title">累計実現損益(税引前)</div>
-                        <div class="kpi-value" id="traderB-profit">0円</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-title">勝率 (取引回数)</div>
-                        <div class="kpi-value" id="traderB-winrate">0%</div>
-                        <div class="kpi-sub" id="traderB-trades">0回中 0勝</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-title">平均利益 / 平均損失</div>
-                        <div class="kpi-value small-text" id="traderB-avg">0円 / 0円</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-title">平均保有時間 (益出し / 損切り)</div>
-                        <div class="kpi-value small-text" id="traderB-hold">0分 / 0分</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="section-title">📝 共有・振り返りメモ</div>
-    <div class="memo-container">
-        <div class="memo-wrapper traderA-memo">
-            <h4>🟣 トレーダーA <span id="saveStatusTraderA" class="save-status">同期完了</span></h4>
-            <textarea id="memoTraderA" class="memo-box" placeholder="本日のトレードの振り返りなどを記入してください。"></textarea>
-        </div>
-        <div class="memo-wrapper traderB-memo">
-            <h4>🟠 トレーダーB <span id="saveStatusTraderB" class="save-status">同期完了</span></h4>
-            <textarea id="memoTraderB" class="memo-box" placeholder="本日のトレードの振り返りなどを記入してください。"></textarea>
-        </div>
-    </div>
-
-    <div class="section-title">
-        <div style="display: flex; align-items: center; gap: 15px;">
-            📅 日次損益カレンダー
-            <button id="prevMonthBtn" class="month-nav-btn" style="margin-left: 10px;">◀ 過去の月へ</button>
-            <button id="nextMonthBtn" class="month-nav-btn">次の月へ ▶</button>
-        </div>
-    </div>
+<body class="bg-gray-100 font-sans text-gray-800">
+  <div id="app" v-cloak class="max-w-md mx-auto bg-[#F4F4F9] min-h-screen shadow-2xl relative flex flex-col">
     
-    <div class="calendars-container">
-        <div class="calendar-wrapper calendar-left" id="calendarLeft">
-            <div class="calendar-header">
-                <h3 class="calendar-month-label">--年--月</h3>
-                <div class="month-total positive-bg">¥0</div>
-            </div>
-            <div class="calendar-grid-actual">
-                <div class="cal-day-name">日</div><div class="cal-day-name">月</div><div class="cal-day-name">火</div><div class="cal-day-name">水</div><div class="cal-day-name">木</div><div class="cal-day-name">金</div><div class="cal-day-name">土</div>
-            </div>
+    <!-- ヘッダー -->
+    <header class="bg-theme text-white sticky top-0 z-20 shadow-md">
+      <div class="px-4 py-3 text-center font-bold text-lg tracking-wide">
+        {{ activeView === 'list' ? '底値リスト' : (activeView === 'store' ? '店舗別 買うべきリスト' : (activeView === 'calc' ? '単価比較' : '設定')) }}
+      </div>
+      
+      <!-- 検索バー -->
+      <div v-show="activeView === 'list'" class="px-3 pb-2 pt-1 bg-theme">
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          </div>
+          <input type="search" v-model="searchQuery" placeholder="検索 (例: 納豆)" 
+                 class="w-full rounded-xl border-none pl-10 pr-10 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-orange-300 text-sm font-bold text-gray-700 shadow-inner">
+          <button v-if="searchQuery" @click="searchQuery = ''" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400">
+            <svg class="w-5 h-5 bg-gray-100 rounded-full p-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
         </div>
-        <div class="calendar-wrapper" id="calendarRight">
-            <div class="calendar-header">
-                <h3 class="calendar-month-label">--年--月</h3>
-                <div class="month-total positive-bg">¥0</div>
-            </div>
-            <div class="calendar-grid-actual">
-                <div class="cal-day-name">日</div><div class="cal-day-name">月</div><div class="cal-day-name">火</div><div class="cal-day-name">水</div><div class="cal-day-name">木</div><div class="cal-day-name">金</div><div class="cal-day-name">土</div>
-            </div>
-        </div>
-    </div>
+      </div>
 
-    <div class="charts-container">
-        <div class="chart-box">
-            <div class="chart-container-inner">
-                <canvas id="cumulativeChart"></canvas>
-            </div>
-        </div>
-        <div class="chart-box">
-            <div class="chart-container-inner">
-                <canvas id="winRateChart"></canvas>
-            </div>
-        </div>
-    </div>
-    
-    <div class="charts-container">
-        <div class="chart-box" style="flex: 1; min-width: 100%;">
-            <div class="chart-container-inner">
-                <canvas id="timeZoneWinRateChart"></canvas>
-            </div>
-        </div>
-    </div>
+      <!-- 大分類タブ -->
+      <div v-show="activeView === 'list' && !searchQuery" class="flex overflow-x-auto hide-scrollbar px-2 bg-black/10">
+        <button v-for="cat in sortedMainCategories" :key="cat" :id="'tab-main-' + cat" @click="activeMainCat = cat" 
+                class="px-5 py-3 font-bold whitespace-nowrap border-b-4 transition-all shrink-0"
+                :class="activeMainCat === cat ? 'border-white text-white' : 'border-transparent text-white/70'">
+          {{ cat }}
+        </button>
+      </div>
 
-    <div class="section-title">🔍 銘柄別 パフォーマンス一覧</div>
-    <div class="table-container">
-        <table id="stockTable" class="display nowrap" style="width:100%">
-            <thead>
-                <tr>
-                    <th>銘柄名</th>
-                    <th>取引回数</th>
-                    <th>勝率</th>
-                    <th>合計損益(円)</th>
-                    <th>平均利益(円)</th>
-                    <th>平均損失(円)</th>
-                    <th>平均保有(益)</th>
-                    <th>平均保有(損)</th>
-                </tr>
-            </thead>
-            <tbody id="stockTableBody"></tbody>
-        </table>
-    </div>
+      <!-- 店舗タブ -->
+      <div v-show="activeView === 'store'" class="flex overflow-x-auto hide-scrollbar px-2 bg-black/10">
+        <button v-for="store in settings.stores" :key="store.name" :id="'tab-store-' + store.name" @click="activeStoreTab = store.name" 
+                class="px-4 py-3 font-bold whitespace-nowrap border-b-4 transition-all shrink-0"
+                :class="activeStoreTab === store.name ? 'border-white text-white' : 'border-transparent text-white/70'">
+          {{ store.name }}
+        </button>
+      </div>
+    </header>
 
-    <div class="section-title">📋 取引履歴詳細</div>
-    <div class="table-container">
-        <table id="dataTable" class="display nowrap" style="width:100%">
-            <thead>
-                <tr>
-                    <th>約定日</th>
-                    <th>取引主体</th>
-                    <th>銘柄名</th>
-                    <th>勝敗</th>
-                    <th>実現損益(円)</th>
-                    <th>ｴﾝﾄﾘｰ時刻</th>
-                    <th>決済時刻</th>
-                    <th>保有時間</th>
-                </tr>
-            </thead>
-            <tbody id="dataTableBody"></tbody>
-        </table>
-    </div>
-</div>
+    <!-- メインコンテンツ -->
+    <main ref="mainRef" class="flex-1 overflow-y-auto relative pb-28" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
+      
+      <!-- 画面1: 小分類リスト -->
+      <transition name="fade">
+        <section v-show="activeView === 'list'" class="p-2 space-y-2">
+          <div v-if="filteredGroups.length === 0" class="text-center text-gray-400 py-10 font-bold">
+            {{ searchQuery ? '該当する商品がありません' : 'データが登録されていません' }}
+          </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+          <div v-for="group in filteredGroups" :key="group.subName" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <button @click="toggleExpand(group.subName)" class="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+              <div class="flex items-center gap-4 min-w-0">
+                <div class="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-3xl shrink-0 shadow-inner">{{ group.emoji }}</div>
+                <div class="text-left min-w-0">
+                  <div class="font-black text-gray-800 text-lg truncate">{{ group.subName }}</div>
+                  <div class="text-[11px] text-gray-400 font-bold truncate mt-0.5">
+                    {{ group.bestRecord.productName || '商品名未登録' }} <span class="ml-1 text-gray-500 font-medium">({{ group.bestRecord.capacity }}{{ group.bestRecord.unit }})</span>
+                  </div>
+                  <div class="text-xs font-bold mt-1 flex items-center gap-1.5">
+                    <span>最安: <span :class="getStoreTheme(group.bestRecord.store).text">{{ getStoreIcon(group.bestRecord.store) }}{{ group.bestRecord.store }}</span></span>
+                    <span class="text-gray-300">|</span>
+                    <span class="text-gray-500">登録数: {{ group.records.length }}件</span>
+                  </div>
+                </div>
+              </div>
+              <div class="text-right shrink-0 ml-2">
+                <div class="font-black text-xl text-gray-800 leading-none">{{ formatYen(Math.round(group.bestRecord.effectivePrice)) }}</div>
+                <div v-if="getStoreDiscount(group.bestRecord.store) > 0" class="text-[10px] text-gray-400 mt-1 line-through">
+                  店頭: {{ formatYen(group.bestRecord.price) }}
+                </div>
+              </div>
+            </button>
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyAs5DyViNyDY1G3zhtcBPlTjlLLYklicgQ",
-        authDomain: "dailytrade-a0d52.firebaseapp.com",
-        projectId: "dailytrade-a0d52",
-        storageBucket: "dailytrade-a0d52.firebasestorage.app",
-        messagingSenderId: "716136694338",
-        appId: "1:716136694338:web:b5a243761a3a8bb00ee3db",
-        measurementId: "G-DECLDQWC1Q"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    
-    const memoDocRef = doc(db, "dashboard_data", "shared_memos_secure_v1");
-    const tradeDataRef = doc(db, "dashboard_data", "trade_history");
-
-    let rawData = [];
-    let cumChartInstance = null;
-    let winRateChartInstance = null;
-    let timeZoneChartInstance = null;
-
-    let currentCalYear = new Date().getFullYear();
-    let currentCalMonth = new Date().getMonth();
-
-    window.updateDashboard = updateDashboard;
-    window.resetFilters = resetFilters;
-
-    document.addEventListener('click', function(e) {
-        const clickedCell = e.target.closest('.cal-cell');
-        document.querySelectorAll('.cal-cell.active-tooltip').forEach(cell => {
-            if (cell !== clickedCell) { cell.classList.remove('active-tooltip'); }
-        });
-        if (clickedCell && clickedCell.querySelector('.cal-tooltip')) {
-            clickedCell.classList.toggle('active-tooltip');
-        }
-    });
-
-    async function loadDataFromFirebase() {
-        try {
-            const docSnap = await getDoc(tradeDataRef);
-            if (docSnap.exists()) {
-                rawData = docSnap.data().data;
-                if(rawData.length > 0) {
-                    const sortedDates = [...rawData].map(d => d.date).sort();
-                    const latestDate = sortedDates[sortedDates.length - 1]; 
-                    currentCalYear = parseInt(latestDate.split('/')[0]);
-                    currentCalMonth = parseInt(latestDate.split('/')[1]) - 1;
-                }
-
-                document.getElementById('loadingOverlay').style.display = 'none';
-                document.getElementById('mainContent').style.display = 'block';
+            <!-- 展開時の詳細レコード (Flexboxレイアウトに修正) -->
+            <div v-if="expandedGroup === group.subName" class="bg-gray-50/50 p-3 space-y-2 border-t border-gray-100">
+              <div v-for="(rec, idx) in group.records" :key="rec.id" class="bg-white p-3 rounded-xl border flex items-stretch gap-2 shadow-sm" :class="getStoreTheme(rec.store).border">
                 
-                initFirebaseMemo();
-                initializeFilters();
-                setupCalendarNav();
-                updateDashboard();
-            } else {
-                document.getElementById('loadingOverlay').innerText = "データが見つかりません。";
-            }
-        } catch (error) {
-            document.getElementById('loadingOverlay').innerText = "データ読み込みエラー: " + error;
-        }
-    }
+                <!-- 左側コンテンツ -->
+                <div class="flex-1 min-w-0 flex flex-col justify-center">
+                  <div class="text-sm font-bold flex items-center gap-1" :class="getStoreTheme(rec.store).text">
+                    {{ getStoreIcon(rec.store) }} {{ rec.store }}
+                    <span v-if="idx === 0" class="ml-1 text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">最安</span>
+                  </div>
+                  <div class="text-[11px] text-gray-600 font-bold mt-1 truncate">{{ rec.productName || '商品名未設定' }}</div>
+                  <div class="text-[11px] text-gray-500">{{ rec.capacity }}{{ rec.unit }}</div>
+                  <div v-if="getStoreDiscount(rec.store) > 0" class="text-[10px] text-red-500 font-bold mt-1">({{ getStoreDiscount(rec.store) }}%割引後)</div>
+                </div>
+                
+                <!-- 中央価格コンテンツ -->
+                <div class="text-right shrink-0 flex flex-col justify-center">
+                  <div class="font-black text-gray-800 text-lg leading-none">{{ formatYen(Math.round(rec.effectivePrice)) }}</div>
+                  <div v-if="getStoreDiscount(rec.store) > 0" class="text-[10px] text-gray-400 mt-1 line-through">店頭: {{ formatYen(rec.price) }}</div>
+                  <div class="text-[11px] text-gray-500 font-medium mt-1">{{ formatUnitPrice(rec) }}</div>
+                </div>
 
-    function initFirebaseMemo() {
-        const memoTraderA = document.getElementById('memoTraderA');
-        const memoTraderB = document.getElementById('memoTraderB');
-        const statusTraderA = document.getElementById('saveStatusTraderA');
-        const statusTraderB = document.getElementById('saveStatusTraderB');
-        
-        onSnapshot(memoDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                if (document.activeElement !== memoTraderA && data.traderA !== undefined) {
-                    memoTraderA.value = data.traderA;
-                }
-                if (document.activeElement !== memoTraderB && data.traderB !== undefined) {
-                    memoTraderB.value = data.traderB;
-                }
-            }
-        });
+                <!-- 右側ボタン (絶対配置をやめ、Flexで仕切り線とともに配置) -->
+                <div class="shrink-0 flex flex-col justify-center gap-2 pl-2 ml-1 border-l border-gray-100">
+                  <button @click.stop="editRecord(rec)" class="w-7 h-7 flex items-center justify-center bg-blue-50 text-blue-500 rounded-full border border-blue-100 active:scale-90"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                  <button @click.stop="deleteRecord(rec.id)" class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-full border border-red-100 active:scale-90"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                </div>
 
-        let timeoutTraderA, timeoutTraderB;
+              </div>
+              <div class="pt-2 text-center">
+                <button @click.stop="quickAddToGroup(group)" class="text-xs bg-white text-orange-600 px-4 py-2.5 rounded-xl font-bold active:scale-95 border border-orange-200 shadow-sm w-full flex justify-center items-center gap-1">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                  他店舗の「{{ group.subName }}」を追加
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </transition>
 
-        memoTraderA.addEventListener('input', function() {
-            statusTraderA.textContent = '同期中...';
-            statusTraderA.style.color = '#e67e22';
-            clearTimeout(timeoutTraderA);
-            timeoutTraderA = setTimeout(async () => {
-                try {
-                    await setDoc(memoDocRef, { traderA: this.value }, { merge: true });
-                    statusTraderA.textContent = 'クラウド同期済';
-                    statusTraderA.style.color = '#27ae60';
-                } catch(e) {
-                    statusTraderA.textContent = '接続エラー';
-                    statusTraderA.style.color = '#e74c3c';
-                }
-            }, 1000);
-        });
-
-        memoTraderB.addEventListener('input', function() {
-            statusTraderB.textContent = '同期中...';
-            statusTraderB.style.color = '#e67e22';
-            clearTimeout(timeoutTraderB);
-            timeoutTraderB = setTimeout(async () => {
-                try {
-                    await setDoc(memoDocRef, { traderB: this.value }, { merge: true });
-                    statusTraderB.textContent = 'クラウド同期済';
-                    statusTraderB.style.color = '#27ae60';
-                } catch(e) {
-                    statusTraderB.textContent = '接続エラー';
-                    statusTraderB.style.color = '#e74c3c';
-                }
-            }, 1000);
-        });
-    }
-
-    function setupCalendarNav() {
-        document.getElementById('prevMonthBtn').addEventListener('click', () => {
-            currentCalMonth--;
-            if (currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; }
-            updateDashboard(); 
-        });
-        document.getElementById('nextMonthBtn').addEventListener('click', () => {
-            currentCalMonth++;
-            if (currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; }
-            updateDashboard();
-        });
-    }
-
-    function initializeFilters() {
-        const stockFilter = document.getElementById('stockFilter');
-        const currentSelection = stockFilter.value;
-        stockFilter.innerHTML = '<option value="ALL">すべて</option>';
-        const uniqueStocks = [...new Set(rawData.map(d => d.stock))].sort();
-        uniqueStocks.forEach(stock => {
-            const option = document.createElement('option');
-            option.value = stock;
-            option.textContent = stock;
-            stockFilter.appendChild(option);
-        });
-        if(uniqueStocks.includes(currentSelection)) {
-            stockFilter.value = currentSelection;
-        }
-    }
-
-    function resetFilters() {
-        document.getElementById('personFilter').value = 'ALL';
-        document.getElementById('stockFilter').value = 'ALL';
-        document.getElementById('startDate').value = '';
-        document.getElementById('endDate').value = '';
-        updateDashboard();
-    }
-
-    function calcAndRenderKPIs(data, prefix) {
-        let totalProfit = 0, grossProfit = 0, grossLoss = 0, winCount = 0, lossCount = 0;
-        let winHoldSum = 0, winHoldCount = 0, lossHoldSum = 0, lossHoldCount = 0;
-
-        data.forEach(d => {
-            totalProfit += d.profit;
-            if(d.profit >= 0) {
-                grossProfit += d.profit; winCount++;
-                if (d.holdTime !== null) { winHoldSum += d.holdTime; winHoldCount++; }
-            } else if (d.profit < 0) {
-                grossLoss += Math.abs(d.profit); lossCount++;
-                if (d.holdTime !== null) { lossHoldSum += d.holdTime; lossHoldCount++; }
-            }
-        });
-
-        const trades = data.length;
-        const winRate = trades > 0 ? ((winCount / trades) * 100).toFixed(1) : 0;
-        const avgWin = winCount > 0 ? Math.round(grossProfit / winCount) : 0;
-        const avgLoss = lossCount > 0 ? Math.round(grossLoss / lossCount) : 0;
-        const avgWinHold = winHoldCount > 0 ? Math.round(winHoldSum / winHoldCount) : 0;
-        const avgLossHold = lossHoldCount > 0 ? Math.round(lossHoldSum / lossHoldCount) : 0;
-
-        const profitEl = document.getElementById(`${prefix}-profit`);
-        profitEl.textContent = totalProfit.toLocaleString() + '円';
-        profitEl.className = 'kpi-value ' + (totalProfit >= 0 ? 'positive' : 'negative');
-        
-        document.getElementById(`${prefix}-winrate`).textContent = winRate + '%';
-        document.getElementById(`${prefix}-trades`).textContent = `${trades}回中 ${winCount}勝 ${lossCount}敗`;
-        document.getElementById(`${prefix}-avg`).textContent = `+${avgWin.toLocaleString()}円 / -${avgLoss.toLocaleString()}円`;
-        
-        const winHoldText = winHoldCount > 0 ? `${avgWinHold}分` : '-';
-        const lossHoldText = lossHoldCount > 0 ? `${avgLossHold}分` : '-';
-        document.getElementById(`${prefix}-hold`).textContent = `${winHoldText} / ${lossHoldText}`;
-    }
-
-    function renderSingleCalendar(containerId, year, month, dailyDataHash) {
-        const wrapper = document.getElementById(containerId);
-        const grid = wrapper.querySelector('.calendar-grid-actual');
-        const titleLabel = wrapper.querySelector('.calendar-month-label');
-        const totalEl = wrapper.querySelector('.month-total');
-
-        const cells = grid.querySelectorAll('.cal-cell');
-        cells.forEach(cell => cell.remove());
-
-        titleLabel.textContent = `${year}年${month + 1}月`;
-
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const startingDayOfWeek = firstDay.getDay();
-        const totalDays = lastDay.getDate();
-
-        let monthTotal = 0;
-
-        for (let i = 0; i < startingDayOfWeek; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'cal-cell empty';
-            grid.appendChild(cell);
-        }
-
-        for (let day = 1; day <= totalDays; day++) {
-            const cell = document.createElement('div');
-            cell.className = 'cal-cell';
+      <!-- 画面2: 店舗別リスト -->
+      <transition name="fade">
+        <section v-show="activeView === 'store'" class="p-2 space-y-3">
+          <div v-if="storeBuyList.length === 0" class="text-center text-gray-400 py-10 font-bold">この店舗が最安値の商品はありません</div>
+          
+          <!-- Flexレイアウトに修正し、価格が名前に被らないように修正 -->
+          <div v-for="group in storeBuyList" :key="group.subName" class="bg-white rounded-2xl p-4 shadow-sm border flex items-center gap-3" :class="getStoreTheme(activeStoreTab).border">
             
-            const dateStr = `${year}/${String(month + 1).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
-            const dayData = dailyDataHash[dateStr];
+            <input type="checkbox" :id="'check-' + group.subName" v-model="cartChecked[group.subName]" class="checkbox-custom hidden">
+            <label :for="'check-' + group.subName" class="flex-1 flex items-center gap-3 cursor-pointer transition-all duration-200 min-w-0">
+              
+              <div class="w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors" :class="cartChecked[group.subName] ? 'bg-orange-500 border-orange-500' : 'border-gray-300'">
+                <svg v-show="cartChecked[group.subName]" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+              </div>
 
-            let dateHtml = `<div class="cal-date">${day}</div>`;
-            let profitHtml = '';
-            let tooltipHtml = '';
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-3xl shrink-0 border border-gray-100" :class="{'grayscale': cartChecked[group.subName]}">{{ group.emoji }}</div>
+                <div class="text-left min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="text-[9px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-bold">{{ group.mainCategory }}</span>
+                    <div class="font-black text-gray-800 text-base truncate">{{ group.subName }}</div>
+                  </div>
+                  <div class="text-[11px] text-gray-500 font-bold truncate">{{ group.bestRecord.productName || '商品名未登録' }} ({{ group.bestRecord.capacity }}{{ group.bestRecord.unit }})</div>
+                </div>
+              </div>
+            </label>
 
-            if (dayData) {
-                monthTotal += dayData.profit;
-                const profitClass = dayData.profit >= 0 ? 'positive-cal' : 'negative-cal';
-                profitHtml = `<div class="cal-profit ${profitClass}">¥${dayData.profit.toLocaleString()}</div>`;
-                
-                tooltipHtml = `<div class="cal-tooltip">`;
-                const sortedDetails = [...dayData.details].sort((a, b) => {
-                    if (a.person !== b.person) {
-                        return a.person.localeCompare(b.person);
-                    }
-                    return b.profit - a.profit; 
-                });
-                
-                sortedDetails.forEach(trade => {
-                    const tClass = trade.profit >= 0 ? 'positive' : 'negative';
-                    const sign = trade.profit > 0 ? '+' : '';
-                    tooltipHtml += `
-                        <div class="tooltip-row">
-                            <div><span class="tt-person">${trade.person}</span><span class="tt-stock">${trade.stock}</span></div>
-                            <div class="tt-val ${tClass}">${sign}¥${trade.profit.toLocaleString()}</div>
-                        </div>
-                    `;
-                });
-                tooltipHtml += `</div>`;
-            }
+            <!-- 右側の価格表示 -->
+            <div class="text-right shrink-0 pl-2" :class="{'opacity-50': cartChecked[group.subName]}">
+              <div class="font-black text-xl leading-none" :class="getStoreTheme(activeStoreTab).text">{{ formatYen(Math.round(group.bestRecord.effectivePrice)) }}</div>
+              <div class="text-[10px] text-gray-400 mt-1">{{ formatUnitPrice(group.bestRecord) }}</div>
+            </div>
+          </div>
+        </section>
+      </transition>
 
-            cell.innerHTML = dateHtml + profitHtml + tooltipHtml;
-            grid.appendChild(cell);
-        }
+      <!-- 画面3: 単価比較 -->
+      <section v-show="activeView === 'calc'" class="p-4 space-y-4">
+        <div class="flex justify-end">
+          <button @click="resetCalc" class="text-xs bg-gray-200 text-gray-600 px-4 py-1.5 rounded-full font-bold shadow-sm active:scale-95">リセット</button>
+        </div>
 
-        const remainingCells = (startingDayOfWeek + totalDays) % 7;
-        if (remainingCells > 0) {
-            for (let i = 0; i < 7 - remainingCells; i++) {
-                const cell = document.createElement('div');
-                cell.className = 'cal-cell empty';
-                grid.appendChild(cell);
-            }
-        }
+        <article class="bg-amber-50 border border-amber-200 rounded-3xl p-4 shadow-sm">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-black text-amber-800 text-lg">商品 A</h3>
+            <button @click="registerFromCalc('a')" v-if="calc.a.price && calc.a.cap" class="text-[11px] bg-amber-600 text-white px-3 py-1.5 rounded-full font-bold shadow active:scale-95">価格を登録</button>
+          </div>
+          <div class="flex gap-2">
+            <div class="flex-1"><label class="text-[10px] font-bold text-gray-500 ml-1">価格(円)</label><input type="number" v-model.number="calc.a.price" class="w-full rounded-xl p-3 text-lg font-bold text-right outline-none border border-amber-100"></div>
+            <div class="flex-1"><label class="text-[10px] font-bold text-gray-500 ml-1">容量</label><input type="number" v-model.number="calc.a.cap" class="w-full rounded-xl p-3 text-lg font-bold text-right outline-none border border-amber-100"></div>
+          </div>
+          <div class="mt-3 flex items-center justify-between">
+            <select v-model="calc.a.store" class="bg-white border border-amber-200 rounded-lg p-2 text-xs text-amber-800 font-bold outline-none">
+              <option v-for="store in settings.stores" :key="store.name" :value="store.name">{{ store.name }}</option>
+            </select>
+            <div v-if="calc.a.price && getCalcEffectivePrice('a') !== calc.a.price" class="text-xs text-red-500 font-bold text-right">
+              <div>実質: {{ Math.round(getCalcEffectivePrice('a')) }}円</div>
+              <div class="text-[9px] text-gray-500">({{ getStoreDiscount(calc.a.store) }}%割引設定を適用)</div>
+            </div>
+          </div>
+        </article>
 
-        totalEl.textContent = `¥${monthTotal.toLocaleString()}`;
-        totalEl.className = `month-total ${monthTotal >= 0 ? 'positive-bg' : 'negative-bg'}`;
-    }
+        <article class="bg-stone-50 border border-stone-200 rounded-3xl p-4 shadow-sm">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-black text-stone-700 text-lg">商品 B</h3>
+            <button @click="registerFromCalc('b')" v-if="calc.b.price && calc.b.cap" class="text-[11px] bg-stone-600 text-white px-3 py-1.5 rounded-full font-bold shadow active:scale-95">価格を登録</button>
+          </div>
+          <div class="flex gap-2">
+            <div class="flex-1"><label class="text-[10px] font-bold text-gray-500 ml-1">価格(円)</label><input type="number" v-model.number="calc.b.price" class="w-full rounded-xl p-3 text-lg font-bold text-right outline-none border border-stone-200"></div>
+            <div class="flex-1"><label class="text-[10px] font-bold text-gray-500 ml-1">容量</label><input type="number" v-model.number="calc.b.cap" class="w-full rounded-xl p-3 text-lg font-bold text-right outline-none border border-stone-200"></div>
+          </div>
+          <div class="mt-3 flex items-center justify-between">
+            <select v-model="calc.b.store" class="bg-white border border-stone-200 rounded-lg p-2 text-xs text-stone-700 font-bold outline-none">
+              <option v-for="store in settings.stores" :key="store.name" :value="store.name">{{ store.name }}</option>
+            </select>
+            <div v-if="calc.b.price && getCalcEffectivePrice('b') !== calc.b.price" class="text-xs text-red-500 font-bold text-right">
+              <div>実質: {{ Math.round(getCalcEffectivePrice('b')) }}円</div>
+              <div class="text-[9px] text-gray-500">({{ getStoreDiscount(calc.b.store) }}%割引設定を適用)</div>
+            </div>
+          </div>
+        </article>
 
-    // 時刻文字列（HH:MM）を15分単位の文字列（HH:00, HH:15...）に丸める関数
-    function get15MinBin(timeStr) {
-        if (!timeStr) return null;
-        const parts = timeStr.split(':');
-        if (parts.length !== 2) return null;
-        const h = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10);
-        const binM = Math.floor(m / 15) * 15;
-        return `${String(h).padStart(2, '0')}:${String(binM).padStart(2, '0')}`;
-    }
+        <div class="rounded-[24px] overflow-hidden bg-white shadow-md border border-gray-100 mt-6">
+          <div v-if="!calcValid" class="p-6 text-center text-gray-400 font-bold">比較する数値を入力してください</div>
+          <div v-else>
+            <div class="bg-[#D3A975] text-white text-xs font-bold py-1 px-3 inline-block rounded-br-lg">結果</div>
+            <div class="p-5">
+              <h2 class="text-2xl font-black text-center mb-4 tracking-wider" :class="calcResult.titleColor">
+                商品 <span class="text-4xl text-[#CC0000] mx-1">{{ calcResult.winner }}</span> が安いです！
+              </h2>
+              <div class="bg-[#CC0000] text-white text-center font-bold py-2 mb-3 text-lg shadow-sm">{{ calcResult.diffText }}</div>
+              <div class="text-[11px] text-center text-gray-700 font-bold mb-3">({{ calcResult.winner === 'A' ? 'B' : 'A' }}の単価で{{ calcResult.winner }}の分量を買う場合より)</div>
+              <div class="flex justify-center items-center gap-4 text-sm font-bold text-gray-800">
+                <div class="flex items-center gap-1"><span class="bg-[#D3A975] text-white px-2 py-0.5 rounded text-xs">A</span> @{{ calcResult.uA }}</div>
+                <div class="flex items-center gap-1"><span class="bg-[#D3A975] text-white px-2 py-0.5 rounded text-xs">B</span> @{{ calcResult.uB }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-    function updateDashboard() {
-        const filterPerson = document.getElementById('personFilter').value;
-        const filterStock = document.getElementById('stockFilter').value;
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-
-        const baseData = rawData.filter(d => {
-            const recordDate = d.date.replace(/\//g, '-');
-            const matchStock = filterStock === 'ALL' || d.stock === filterStock;
-            const matchStart = startDate === '' || recordDate >= startDate;
-            const matchEnd = endDate === '' || recordDate <= endDate;
-            return matchStock && matchStart && matchEnd;
-        });
-
-        const traderAData = baseData.filter(d => d.person === 'トレーダーA');
-        const traderBData = baseData.filter(d => d.person === 'トレーダーB');
-
-        calcAndRenderKPIs(baseData, 'total');
-        calcAndRenderKPIs(traderAData, 'traderA');
-        calcAndRenderKPIs(traderBData, 'traderB');
-
-        const filteredData = baseData.filter(d => filterPerson === 'ALL' || d.person === filterPerson);
-        filteredData.sort((a, b) => a.date.localeCompare(b.date));
-
-        const dailyData = {};
-        const stockStats = {};
-        
-        // --- 時間帯別データ集計用の初期化（15分区切り） ---
-        const timeZones = [
-            '09:00', '09:15', '09:30', '09:45',
-            '10:00', '10:15', '10:30', '10:45',
-            '11:00', '11:15', '11:30',
-            '12:30', '12:45',
-            '13:00', '13:15', '13:30', '13:45',
-            '14:00', '14:15', '14:30', '14:45',
-            '15:00'
-        ];
-        const tzStatsA = {};
-        const tzStatsB = {};
-        timeZones.forEach(tz => {
-            tzStatsA[tz] = { trades: 0, wins: 0 };
-            tzStatsB[tz] = { trades: 0, wins: 0 };
-        });
-
-        let totalWinsFiltered = 0;
-
-        filteredData.forEach(d => {
-            // カレンダー用集計
-            if(!dailyData[d.date]) dailyData[d.date] = { profit: 0, trades: 0, wins: 0, details: [] };
-            dailyData[d.date].profit += d.profit;
-            dailyData[d.date].trades += 1;
-            dailyData[d.date].details.push(d);
-
-            if(d.profit >= 0) {
-                dailyData[d.date].wins += 1;
-                totalWinsFiltered++;
-            }
-
-            // 銘柄別集計
-            if (!stockStats[d.stock]) {
-                stockStats[d.stock] = { trades: 0, wins: 0, losses: 0, grossProfit: 0, grossLoss: 0, winHoldSum: 0, winHoldCount: 0, lossHoldSum: 0, lossHoldCount: 0 };
-            }
-            const s = stockStats[d.stock];
-            s.trades++;
-            if (d.profit >= 0) {
-                s.wins++; s.grossProfit += d.profit;
-                if (d.holdTime !== null) { s.winHoldSum += d.holdTime; s.winHoldCount++; }
-            } else {
-                s.losses++; s.grossLoss += Math.abs(d.profit);
-                if (d.holdTime !== null) { s.lossHoldSum += d.holdTime; s.lossHoldCount++; }
-            }
-
-            // 時間帯別集計 (エントリー時刻基準・15分単位)
-            if (d.entryTime) {
-                const bin = get15MinBin(d.entryTime);
-                if (timeZones.includes(bin)) {
-                    if (d.person === 'トレーダーA') {
-                        tzStatsA[bin].trades++;
-                        if (d.profit >= 0) tzStatsA[bin].wins++;
-                    } else if (d.person === 'トレーダーB') {
-                        tzStatsB[bin].trades++;
-                        if (d.profit >= 0) tzStatsB[bin].wins++;
-                    }
-                }
-            }
-        });
-
-        renderSingleCalendar('calendarRight', currentCalYear, currentCalMonth, dailyData);
-        let leftYear = currentCalYear;
-        let leftMonth = currentCalMonth - 1;
-        if (leftMonth < 0) { leftMonth = 11; leftYear--; }
-        renderSingleCalendar('calendarLeft', leftYear, leftMonth, dailyData);
-
-        // --- チャート描画 ---
-        const overallWinRate = filteredData.length > 0 ? (totalWinsFiltered / filteredData.length) * 100 : 0;
-        const sortedDates = Object.keys(dailyData).sort();
-        
-        let cumP = 0;
-        const chartLabels = [];
-        const chartCumProfit = [];
-        const winChartLabels = [];
-        const chartDailyWinRate = [];
-
-        sortedDates.forEach(date => {
-            const dayInfo = dailyData[date];
-            cumP += dayInfo.profit;
-            chartLabels.push(date);
-            chartCumProfit.push(cumP);
+      <!-- 画面4: 設定画面 -->
+      <transition name="fade">
+        <section v-show="activeView === 'settings'" class="p-4 space-y-4">
+          <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+            <h2 class="font-black text-gray-800 text-xl mb-4 border-b pb-2">アプリ設定</h2>
             
-            if (date >= '2026/02/25') {
-                winChartLabels.push(date);
-                const dailyRate = dayInfo.trades > 0 ? (dayInfo.wins / dayInfo.trades) * 100 : 0;
-                chartDailyWinRate.push(dailyRate);
-            }
+            <div class="space-y-6">
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">大分類タブの並び替え</label>
+                <div class="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden mt-2">
+                  <div v-for="(cat, index) in mutableTabOrder" :key="cat" class="flex items-center justify-between p-3 border-b border-gray-100 bg-white">
+                    <span class="font-bold text-gray-700">{{ cat }}</span>
+                    <div class="flex gap-2">
+                      <button @click="moveTabUp(index)" :disabled="index === 0" class="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-lg disabled:opacity-30">↑</button>
+                      <button @click="moveTabDown(index)" :disabled="index === mutableTabOrder.length - 1" class="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-lg disabled:opacity-30">↓</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">店舗と割引率の設定</label>
+                <p class="text-[11px] text-gray-400 mb-2">お店の名前と、計算時の実質割引率(%)を設定します。</p>
+                <div class="space-y-2">
+                  <div v-for="(store, idx) in settings.stores" :key="idx" class="flex items-center gap-2">
+                    <input type="text" v-model="store.name" class="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2.5 outline-none font-bold text-sm" placeholder="店舗名">
+                    <div class="relative w-20">
+                      <input type="number" v-model.number="store.discount" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 pr-6 outline-none font-bold text-sm text-right" placeholder="0">
+                      <span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
+                    </div>
+                    <button @click="removeStore(idx)" class="w-10 h-10 flex items-center justify-center bg-red-50 text-red-500 rounded-lg border border-red-100 shadow-sm active:scale-95">✕</button>
+                  </div>
+                </div>
+                <button @click="addStore" class="mt-3 w-full bg-gray-100 text-gray-600 font-bold text-sm py-3 rounded-xl border border-gray-200 active:scale-95 shadow-sm">
+                  ＋ 店舗を追加する
+                </button>
+              </div>
+
+              <button @click="saveSettings" class="w-full bg-gray-800 text-white font-bold text-lg py-4 rounded-xl mt-4 shadow active:scale-95 transition-transform">
+                設定を保存する
+              </button>
+            </div>
+          </div>
+        </section>
+      </transition>
+    </main>
+
+    <!-- FAB -->
+    <button v-show="activeView !== 'settings'" @click="openAddSheet" class="fixed bottom-20 right-5 w-16 h-16 bg-theme text-white rounded-full shadow-[0_8px_20px_rgba(245,158,11,0.5)] flex items-center justify-center text-4xl font-light z-40 active:scale-95 transition-transform">
+      ＋
+    </button>
+
+    <!-- 下部ナビゲーション -->
+    <nav class="fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-white border-t border-gray-100 flex z-30 h-[68px] shadow-[0_-5px_20px_rgba(0,0,0,0.05)] pb-safe">
+      <button @click="activeView = 'list'" class="flex-1 flex flex-col items-center justify-center font-bold text-[10px]" :class="activeView === 'list' ? 'text-theme' : 'text-gray-400'">
+        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+        リスト
+      </button>
+      <button @click="activeView = 'store'" class="flex-1 flex flex-col items-center justify-center font-bold text-[10px]" :class="activeView === 'store' ? 'text-theme' : 'text-gray-400'">
+        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+        店舗別
+      </button>
+      <button @click="activeView = 'calc'" class="flex-1 flex flex-col items-center justify-center font-bold text-[10px]" :class="activeView === 'calc' ? 'text-theme' : 'text-gray-400'">
+        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+        単価比較
+      </button>
+      <button @click="activeView = 'settings'" class="flex-1 flex flex-col items-center justify-center font-bold text-[10px]" :class="activeView === 'settings' ? 'text-gray-800' : 'text-gray-400'">
+        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        設定
+      </button>
+    </nav>
+
+    <!-- ボトムシート -->
+    <transition name="slide">
+      <div v-if="isAdding" class="fixed inset-0 z-50 flex flex-col justify-end">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="isAdding = false"></div>
+        <div class="relative w-full max-w-md mx-auto bg-white rounded-t-[32px] shadow-2xl flex flex-col max-h-[90vh]">
+          <div class="flex justify-between items-center px-6 py-5 border-b border-gray-100">
+            <h3 class="font-black text-gray-800 text-lg">{{ form.id ? '価格情報を編集' : '価格を記録' }}</h3>
+            <button @click="isAdding = false" class="text-gray-400 bg-gray-100 w-8 h-8 rounded-full font-bold flex items-center justify-center">✕</button>
+          </div>
+          <div class="p-6 space-y-4 overflow-y-auto flex-1 bg-gray-50/30">
+            <div class="grid grid-cols-2 gap-3">
+              <div><label class="block text-xs font-bold text-gray-500 mb-1">大分類 (タブ)</label><input type="text" v-model="form.mainCategory" list="main-cats" class="w-full bg-white border-2 border-gray-200 rounded-xl p-3 outline-none focus:border-theme text-sm font-bold"><datalist id="main-cats"><option v-for="c in uniqueRawMainCategories" :key="c" :value="c"></option></datalist></div>
+              <div><label class="block text-xs font-bold text-gray-500 mb-1">小分類 (メイン表示)</label><input type="text" v-model="form.subCategory" class="w-full bg-white border-2 border-gray-200 rounded-xl p-3 outline-none focus:border-theme text-sm font-bold"></div>
+            </div>
+            <div><label class="block text-sm font-bold text-gray-700 mb-1">商品名 (詳細用)</label><input type="text" v-model="form.productName" class="w-full bg-white border-2 border-gray-200 rounded-2xl p-4 outline-none focus:border-theme text-base font-bold"></div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">店頭価格 (円)</label>
+                <input type="number" v-model.number="form.price" class="w-full bg-white border-2 border-gray-200 rounded-2xl p-4 outline-none focus:border-theme text-2xl font-black text-right text-red-500">
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">容量と単位</label>
+                <div class="flex">
+                  <input type="number" v-model.number="form.capacity" class="w-1/2 bg-white border-2 border-r-0 border-gray-200 rounded-l-2xl p-4 outline-none focus:border-theme text-xl font-bold text-right">
+                  <select v-model="form.unitSelect" class="bg-gray-50 border-2 border-gray-200 p-4 outline-none text-sm text-center font-bold" :class="form.unitSelect === 'custom' ? 'w-1/4 border-r-0' : 'w-1/2 rounded-r-2xl'">
+                    <option value="g">g</option><option value="ml">ml</option><option value="個">個</option><option value="枚">枚</option><option value="本">本</option><option value="パック">パック</option><option value="custom">手入力</option>
+                  </select>
+                  <input v-if="form.unitSelect === 'custom'" type="text" v-model="form.customUnit" class="w-1/4 bg-white border-2 border-gray-200 rounded-r-2xl p-4 outline-none text-sm font-bold text-center" placeholder="単位">
+                </div>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-gray-700 mb-2">購入店舗</label>
+              <select v-model="form.store" class="w-full bg-white border-2 border-gray-200 rounded-2xl p-4 outline-none focus:border-theme text-lg font-bold appearance-none">
+                <option v-for="store in settings.stores" :key="store.name" :value="store.name">{{ store.name }}</option>
+              </select>
+            </div>
+            <button @click="saveRecord" class="w-full bg-theme text-white font-black text-xl py-5 rounded-2xl mt-4 shadow-lg active:scale-95 transition-transform">{{ form.id ? '更新する' : '登録する' }}</button>
+          </div>
+        </div>
+      </div>
+    </transition>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, addDoc, setDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { createApp, ref, computed, onMounted, watch, nextTick } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+
+    const firebaseConfig = { apiKey: "AIzaSyByelMKXlBERLyD35nMppiyYt5NCLjHi1U", projectId: "price-compare-db" };
+    const db = getFirestore(initializeApp(firebaseConfig));
+
+    createApp({
+      setup() {
+        const activeView = ref('list');
+        const mainRef = ref(null);
+        const isAdding = ref(false);
+        const records = ref([]);
+        const searchQuery = ref('');
+        const activeMainCat = ref('');
+        const activeStoreTab = ref(''); 
+        const expandedGroup = ref('');
+        const settings = ref({ 
+          tabOrderArray: ['杏珠', '食品', '日用品', 'おかず', 'スイーツ', '肉', '野菜', '乳製品', '米'], 
+          stores: [] 
         });
+        const mutableTabOrder = ref([]);
+        const cartChecked = ref({});
         
-        const chartAvgWinRateLine = new Array(winChartLabels.length).fill(overallWinRate);
-        const commonChartOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { labels: { font: { size: 14 } } } },
-            scales: { x: { ticks: { font: { size: 12 } } }, y: { ticks: { font: { size: 12 } } } }
+        const calc = ref({ a: { price: '', cap: '', store: 'その他' }, b: { price: '', cap: '', store: 'その他' } });
+        const form = ref({ id: null, mainCategory: '', subCategory: '', productName: '', capacity: '', unitSelect: 'g', customUnit: '', price: '', store: '業務スーパー' });
+
+        const resetCalc = () => {
+          calc.value = { a: { price: '', cap: '', store: 'その他' }, b: { price: '', cap: '', store: 'その他' } };
         };
 
-        if(cumChartInstance) cumChartInstance.destroy();
-        const ctxCum = document.getElementById('cumulativeChart').getContext('2d');
-        cumChartInstance = new Chart(ctxCum, {
-            type: 'line',
-            data: { 
-                labels: chartLabels, 
-                datasets: [{ label: '累積実現損益(円)', data: chartCumProfit, borderColor: '#3498db', backgroundColor: 'rgba(52, 152, 219, 0.2)', fill: true, tension: 0.1, pointRadius: 4 }] 
-            },
-            options: { ...commonChartOptions, plugins: { title: { display: true, text: '累積損益の推移（日次）', font: { size: 16 } }, legend: { labels: { font: { size: 14 } } } } }
-        });
+        const scrollToTop = () => {
+          if (mainRef.value) mainRef.value.scrollTop = 0;
+        };
 
-        if(winRateChartInstance) winRateChartInstance.destroy();
-        const ctxWin = document.getElementById('winRateChart').getContext('2d');
-        winRateChartInstance = new Chart(ctxWin, {
-            type: 'line',
-            data: { 
-                labels: winChartLabels, 
-                datasets: [
-                    { label: `全体の平均勝率 (${overallWinRate.toFixed(1)}%)`, data: chartAvgWinRateLine, borderColor: '#e74c3c', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false },
-                    { label: '日別勝率(%)', data: chartDailyWinRate, borderColor: '#2ecc71', backgroundColor: 'rgba(46, 204, 113, 0.2)', borderWidth: 3, fill: true, tension: 0.1, pointRadius: 5 }
-                ] 
-            },
-            options: { ...commonChartOptions, plugins: { title: { display: true, text: '日別の勝率推移（2/25以降）', font: { size: 16 } }, legend: { labels: { font: { size: 14 } } } }, scales: { ...commonChartOptions.scales, y: { min: 0, max: 100, ticks: { font: { size: 12 } } } } }
-        });
-
-        // --- 時間帯別 勝率グラフ描画（15分区切り） ---
-        const chartLabelsTZ = timeZones; // '09:00', '09:15' をそのまま表示
+        const touchStartX = ref(0);
+        const touchStartY = ref(0);
         
-        // 取引が全くない時間帯はグラフの点（ドット）を非表示にするために NaN をセットする
-        const processedWinRateA_TZ = timeZones.map(tz => tzStatsA[tz].trades > 0 ? (tzStatsA[tz].wins / tzStatsA[tz].trades) * 100 : NaN);
-        const processedWinRateB_TZ = timeZones.map(tz => tzStatsB[tz].trades > 0 ? (tzStatsB[tz].wins / tzStatsB[tz].trades) * 100 : NaN);
+        const handleTouchStart = (e) => {
+          touchStartX.value = e.changedTouches[0].screenX;
+          touchStartY.value = e.changedTouches[0].screenY;
+        };
 
-        if(timeZoneChartInstance) timeZoneChartInstance.destroy();
-        const ctxTz = document.getElementById('timeZoneWinRateChart').getContext('2d');
-        timeZoneChartInstance = new Chart(ctxTz, {
-            type: 'line', 
-            data: {
-                labels: chartLabelsTZ,
-                datasets: [
-                    {
-                        label: '🟣 トレーダーA 勝率(%)',
-                        data: processedWinRateA_TZ,
-                        borderColor: '#8e44ad',
-                        borderWidth: 2,
-                        tension: 0.1,
-                        fill: false, 
-                        pointRadius: 4,
-                        spanGaps: true 
-                    },
-                    {
-                        label: '🟠 トレーダーB 勝率(%)',
-                        data: processedWinRateB_TZ,
-                        borderColor: '#d35400',
-                        borderWidth: 2,
-                        tension: 0.1,
-                        fill: false, 
-                        pointRadius: 4,
-                        spanGaps: true 
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { 
-                    title: { display: true, text: '時間帯別 勝率（15分単位・エントリー時刻基準）', font: { size: 16 } },
-                    legend: { labels: { font: { size: 14 } } },
-                    tooltip: {
-                        callbacks: {
-                            afterLabel: function(context) {
-                                const tz = timeZones[context.dataIndex];
-                                const isA = context.datasetIndex === 0;
-                                const stats = isA ? tzStatsA[tz] : tzStatsB[tz];
-                                return `取引回数: ${stats.trades}回 (勝ち: ${stats.wins}回)`;
-                            }
-                        }
-                    }
-                },
-                scales: { 
-                    x: { ticks: { font: { size: 11 } } }, 
-                    y: { min: 0, max: 100, ticks: { font: { size: 12 } } } 
-                }
+        const handleTouchEnd = (e) => {
+          if (searchQuery.value) return; 
+          
+          const diffX = touchStartX.value - e.changedTouches[0].screenX;
+          const diffY = touchStartY.value - e.changedTouches[0].screenY;
+          
+          if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+            if (activeView.value === 'list') {
+              const cats = sortedMainCategories.value;
+              const currentIndex = cats.indexOf(activeMainCat.value);
+              if (diffX > 0 && currentIndex < cats.length - 1) {
+                activeMainCat.value = cats[currentIndex + 1];
+              } else if (diffX < 0 && currentIndex > 0) {
+                activeMainCat.value = cats[currentIndex - 1];
+              }
+            } else if (activeView.value === 'store') {
+              const storeTabs = settings.value.stores.map(s => s.name);
+              const currentIndex = storeTabs.indexOf(activeStoreTab.value);
+              if (diffX > 0 && currentIndex < storeTabs.length - 1) {
+                activeStoreTab.value = storeTabs[currentIndex + 1];
+              } else if (diffX < 0 && currentIndex > 0) {
+                activeStoreTab.value = storeTabs[currentIndex - 1];
+              }
             }
+          }
+        };
+
+        watch(activeMainCat, () => {
+          if (activeView.value === 'list') {
+            scrollToTop();
+            nextTick(() => {
+              const el = document.getElementById('tab-main-' + activeMainCat.value);
+              if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            });
+          }
         });
 
-        // --- テーブル描画 ---
-        if ($.fn.DataTable.isDataTable('#stockTable')) { $('#stockTable').DataTable().destroy(); }
-        const stockTbody = document.getElementById('stockTableBody');
-        stockTbody.innerHTML = '';
-        for (const [stockName, s] of Object.entries(stockStats)) {
-            const winRate = s.trades > 0 ? ((s.wins / s.trades) * 100).toFixed(1) : 0;
-            const totalP = s.grossProfit - s.grossLoss;
-            const aWin = s.wins > 0 ? Math.round(s.grossProfit / s.wins) : 0;
-            const aLoss = s.losses > 0 ? Math.round(s.grossLoss / s.losses) : 0;
-            const aWinH = s.winHoldCount > 0 ? Math.round(s.winHoldSum / s.winHoldCount) : '-';
-            const aLossH = s.lossHoldCount > 0 ? Math.round(s.lossHoldSum / s.lossHoldCount) : '-';
+        watch(activeStoreTab, () => {
+          if (activeView.value === 'store') {
+            scrollToTop();
+            nextTick(() => {
+              const el = document.getElementById('tab-store-' + activeStoreTab.value);
+              if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            });
+          }
+        });
+
+        watch(activeView, () => {
+          scrollToTop();
+        });
+
+        const getEmoji = (category, product) => {
+          const text = ((category || "") + " " + (product || "")).toLowerCase();
+          if (text.includes('おむつ') || text.includes('パンパース') || text.includes('おしりふき')) return '👶';
+          if (text.includes('麻婆豆腐') || text.includes('豆腐')) return '🍲';
+          if (text.includes('かに玉') || text.includes('卵') || text.includes('たまご')) return '🥚';
+          if (text.includes('牛乳') || text.includes('ミルク')) return '🥛';
+          if (text.includes('肉') || text.includes('鶏') || text.includes('豚') || text.includes('ウィンナー')) return '🥩';
+          if (text.includes('納豆')) return '🫘';
+          if (text.includes('チーズ')) return '🧀';
+          if (text.includes('パン') || text.includes('食パン')) return '🍞';
+          if (text.includes('米') || text.includes('麦')) return '🍚';
+          if (text.includes('カレー')) return '🍛';
+          if (text.includes('野菜') || text.includes('玉ねぎ') || text.includes('ブロッコリー') || text.includes('ナス')) return '🥦';
+          if (text.includes('ペーパー') || text.includes('ティッシュ')) return '🧻';
+          if (text.includes('洗剤')) return '🫧';
+          if (text.includes('魚') || text.includes('サバ')) return '🐟';
+          if (text.includes('ドレッシング')) return '🥗';
+          if (text.includes('お菓子') || text.includes('ケーキ')) return '🥞';
+          return '🛒';
+        };
+
+        const formatYen = (val) => val ? Number(val).toLocaleString() + '円' : '0円';
+
+        const getStoreTheme = (storeName) => {
+          if (storeName === 'イオン') return { text: 'text-fuchsia-700', border: 'border-fuchsia-200' };
+          if (storeName === 'ウエルシア') return { text: 'text-blue-700', border: 'border-blue-200' };
+          if (storeName === '業務スーパー') return { text: 'text-green-700', border: 'border-green-200' };
+          if (storeName === 'その他') return { text: 'text-gray-700', border: 'border-gray-200' };
+          return { text: 'text-teal-700', border: 'border-teal-200' };
+        };
+
+        const getStoreIcon = (storeName) => {
+          if (storeName === 'イオン') return '🟣';
+          if (storeName === 'ウエルシア') return '🔵';
+          if (storeName === '業務スーパー') return '🟢';
+          if (storeName === 'その他') return '⚪';
+          return '🟡';
+        };
+
+        const getStoreDiscount = (storeName) => {
+          const store = settings.value.stores.find(s => s.name === storeName);
+          return store ? store.discount : 0;
+        };
+
+        const getEffectivePrice = (record) => {
+          let p = Number(record.price);
+          const discount = getStoreDiscount(record.store);
+          if (discount > 0) p = p * (1 - discount / 100);
+          return p;
+        };
+
+        const getCalcEffectivePrice = (itemKey) => {
+          let p = Number(calc.value[itemKey].price);
+          const discount = getStoreDiscount(calc.value[itemKey].store);
+          if (discount > 0) p = p * (1 - discount / 100);
+          return p;
+        };
+
+        const formatUnitPrice = (record) => {
+          const unitP = getEffectivePrice(record) / Number(record.capacity || 1);
+          if (record.unit === 'g' || record.unit === 'ml') return `100${record.unit}あたり ${(unitP * 100).toFixed(1)}円`;
+          return `1${record.unit}あたり ${unitP.toFixed(1)}円`;
+        };
+
+        const uniqueRawMainCategories = computed(() => Array.from(new Set(records.value.map(r => r.mainCategory || '未分類'))));
+
+        const sortedMainCategories = computed(() => {
+          const cats = uniqueRawMainCategories.value;
+          const order = settings.value.tabOrderArray || [];
+          return [...cats].sort((a, b) => {
+            const idxA = order.indexOf(a), idxB = order.indexOf(b);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return a.localeCompare(b, 'ja');
+          });
+        });
+
+        watch(activeView, (newView) => {
+          if (newView === 'settings') {
+            const currentOrder = settings.value.tabOrderArray || [];
+            const allCats = uniqueRawMainCategories.value;
+            const merged = [...currentOrder];
+            allCats.forEach(c => { if (!merged.includes(c)) merged.push(c); });
+            mutableTabOrder.value = merged;
+          }
+        });
+
+        const moveTabUp = (index) => {
+          if (index > 0) {
+            const temp = mutableTabOrder.value[index - 1];
+            mutableTabOrder.value[index - 1] = mutableTabOrder.value[index];
+            mutableTabOrder.value[index] = temp;
+          }
+        };
+
+        const moveTabDown = (index) => {
+          if (index < mutableTabOrder.value.length - 1) {
+            const temp = mutableTabOrder.value[index + 1];
+            mutableTabOrder.value[index + 1] = mutableTabOrder.value[index];
+            mutableTabOrder.value[index] = temp;
+          }
+        };
+
+        const addStore = () => settings.value.stores.push({ name: '', discount: 0 });
+        const removeStore = (idx) => settings.value.stores.splice(idx, 1);
+
+        const allGroups = computed(() => {
+          const map = new Map();
+          records.value.forEach(r => {
+            const sub = r.subCategory || "未設定";
+            if (!map.has(sub)) map.set(sub, { subName: sub, mainCategory: r.mainCategory, emoji: getEmoji(sub, r.productName), records: [], bestEffectivePrice: Infinity, bestRecord: null });
+            const group = map.get(sub);
+            const effPrice = getEffectivePrice(r);
+            const unitPrice = effPrice / Number(r.capacity || 1);
+            r.effectivePrice = effPrice; r.unitPrice = unitPrice;
+            group.records.push(r);
+            if (unitPrice < group.bestEffectivePrice) {
+              group.bestEffectivePrice = unitPrice;
+              group.bestRecord = r;
+            }
+          });
+          return Array.from(map.values());
+        });
+
+        const filteredGroups = computed(() => {
+          let list = allGroups.value;
+          if (searchQuery.value) {
+            const q = searchQuery.value.toLowerCase();
+            list = list.filter(g => g.subName.toLowerCase().includes(q) || g.records.some(r => (r.productName||'').toLowerCase().includes(q)));
+          } else {
+            list = list.filter(g => (g.mainCategory || '未分類') === activeMainCat.value);
+          }
+          list.forEach(g => g.records.sort((a, b) => a.unitPrice - b.unitPrice));
+          return list.sort((a, b) => a.subName.localeCompare(b.subName, 'ja'));
+        });
+
+        const storeBuyList = computed(() => {
+          const list = allGroups.value.filter(g => g.bestRecord && g.bestRecord.store === activeStoreTab.value);
+          const order = settings.value.tabOrderArray || [];
+          return list.sort((a, b) => {
+            const idxA = order.indexOf(a.mainCategory), idxB = order.indexOf(b.mainCategory);
+            if (idxA !== idxB) return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+            return a.subName.localeCompare(b.subName, 'ja');
+          });
+        });
+
+        const toggleExpand = (name) => { expandedGroup.value = expandedGroup.value === name ? '' : name; };
+
+        const openAddSheet = () => {
+          form.value = { id: null, mainCategory: activeMainCat.value || '', subCategory: searchQuery.value || '', productName: '', capacity: '', unitSelect: 'g', customUnit: '', price: '', store: settings.value.stores[0]?.name || '業務スーパー' };
+          isAdding.value = true;
+        };
+
+        const quickAddToGroup = (group) => {
+          form.value = { id: null, mainCategory: group.mainCategory || '', subCategory: group.subName, productName: group.bestRecord.productName || '', capacity: group.bestRecord.capacity || '', unitSelect: 'g', customUnit: '', price: '', store: settings.value.stores[0]?.name || 'その他' };
+          isAdding.value = true;
+        };
+
+        const registerFromCalc = (itemKey) => {
+          form.value = { id: null, mainCategory: activeMainCat.value || '', subCategory: '', productName: '', capacity: calc.value[itemKey].cap || '', unitSelect: 'g', customUnit: '', price: calc.value[itemKey].price || '', store: calc.value[itemKey].store };
+          isAdding.value = true;
+        };
+
+        const editRecord = (rec) => {
+          const standardUnits = ['g', 'ml', '個', '枚', '本', 'パック'];
+          form.value = { ...rec };
+          if (standardUnits.includes(rec.unit)) {
+            form.value.unitSelect = rec.unit;
+            form.value.customUnit = '';
+          } else {
+            form.value.unitSelect = 'custom';
+            form.value.customUnit = rec.unit || '';
+          }
+          isAdding.value = true; 
+        };
+
+        const saveRecord = async () => {
+          if (!form.value.subCategory || !form.value.price || !form.value.capacity) return alert("小分類・価格・容量は必須です");
+          const finalUnit = form.value.unitSelect === 'custom' ? form.value.customUnit : form.value.unitSelect;
+          if (!finalUnit) return alert("単位を入力してください");
+          
+          try {
+            const payload = { mainCategory: form.value.mainCategory || '未分類', subCategory: form.value.subCategory, productName: form.value.productName || '', capacity: Number(form.value.capacity), unit: finalUnit, price: Number(form.value.price), store: form.value.store };
+            if (form.value.id) await setDoc(doc(db, "price_records", form.value.id), payload);
+            else await addDoc(collection(db, "price_records"), payload);
             
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${stockName}</td>
-                <td>${s.trades}</td>
-                <td>${winRate}%</td>
-                <td class="${totalP >= 0 ? 'positive' : 'negative'} font-weight-bold">${totalP.toLocaleString()}</td>
-                <td class="positive">+${aWin.toLocaleString()}</td>
-                <td class="negative">-${aLoss.toLocaleString()}</td>
-                <td>${aWinH}</td>
-                <td>${aLossH}</td>
-            `;
-            stockTbody.appendChild(tr);
-        }
-        $('#stockTable').DataTable({
-            pageLength: 10,
-            order: [[3, 'asc']],
-            language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/ja.json" },
-            searching: true,
-            info: false,
-            scrollX: true
+            activeMainCat.value = payload.mainCategory;
+            expandedGroup.value = payload.subCategory;
+            searchQuery.value = '';
+            isAdding.value = false;
+          } catch(e) { alert("エラー: " + e.message); }
+        };
+
+        const deleteRecord = async (id) => { if(confirm("削除しますか？")) await deleteDoc(doc(db, "price_records", id)); };
+
+        const saveSettings = async () => {
+          settings.value.stores = settings.value.stores.filter(s => s.name && s.name.trim() !== '');
+          settings.value.tabOrderArray = [...mutableTabOrder.value];
+          try {
+            await setDoc(doc(db, "settings", "config"), settings.value);
+            alert("設定を保存しました。");
+          } catch(e) { alert("エラー: " + e.message); }
+        };
+
+        const calcValid = computed(() => calc.value.a.price && calc.value.a.cap && calc.value.b.price && calc.value.b.cap);
+        const calcResult = computed(() => {
+          if (!calcValid.value) return {};
+          const effA = getCalcEffectivePrice('a');
+          const effB = getCalcEffectivePrice('b');
+          const uA = effA / calc.value.a.cap;
+          const uB = effB / calc.value.b.cap;
+          const uAStr = Number(uA).toFixed(3);
+          const uBStr = Number(uB).toFixed(3);
+          
+          if (uA < uB) {
+            const diff = Math.round((uB * calc.value.a.cap) - effA);
+            return { winner: 'A', titleColor: 'text-gray-800', diffText: `${Math.abs(diff)}円お得！`, uA: uAStr, uB: uBStr };
+          } else if (uA > uB) {
+            const diff = Math.round((uA * calc.value.b.cap) - effB);
+            return { winner: 'B', titleColor: 'text-[#CC0000]', diffText: `${Math.abs(diff)}円お得！`, uA: uAStr, uB: uBStr };
+          } else {
+            return { winner: '-', titleColor: 'text-gray-800', diffText: `0円`, uA: uAStr, uB: uBStr };
+          }
         });
 
-        if ($.fn.DataTable.isDataTable('#dataTable')) { $('#dataTable').DataTable().destroy(); }
-        const tbody = document.getElementById('dataTableBody');
-        tbody.innerHTML = '';
-        [...filteredData].reverse().forEach(d => {
-            const tr = document.createElement('tr');
-            const holdStr = d.holdTime !== null ? `${d.holdTime}分` : '-';
-            const entryStr = d.entryTime ? d.entryTime : '-';
-            const exitStr = d.exitTime ? d.exitTime : '-';
-            tr.innerHTML = `
-                <td>${d.date}</td>
-                <td>${d.person}</td>
-                <td>${d.stock}</td>
-                <td>${d.result}</td>
-                <td class="${d.profit >= 0 ? 'positive' : 'negative'} font-weight-bold">${d.profit.toLocaleString()}</td>
-                <td>${entryStr}</td>
-                <td>${exitStr}</td>
-                <td>${holdStr}</td>
-            `;
-            tbody.appendChild(tr);
+        onMounted(() => {
+          onSnapshot(doc(db, "settings", "config"), (docSnap) => {
+            if (docSnap.exists()) {
+               const data = docSnap.data();
+               if (data.tabOrderString && !data.tabOrderArray) data.tabOrderArray = data.tabOrderString.split(',').map(s=>s.trim());
+               
+               if (!data.stores || data.stores.length === 0) {
+                 data.stores = [
+                   { name: 'ウエルシア', discount: data.discountWelcia !== undefined ? data.discountWelcia : 33 },
+                   { name: 'イオン', discount: data.discountAeon !== undefined ? data.discountAeon : 20 },
+                   { name: '業務スーパー', discount: 0 },
+                   { name: 'その他', discount: 0 }
+                 ];
+               }
+               settings.value = { ...settings.value, ...data };
+            } else {
+               settings.value.stores = [
+                 { name: 'ウエルシア', discount: 33 },
+                 { name: 'イオン', discount: 20 },
+                 { name: '業務スーパー', discount: 0 },
+                 { name: 'その他', discount: 0 }
+               ];
+            }
+            if (!activeStoreTab.value && settings.value.stores.length > 0) {
+              activeStoreTab.value = settings.value.stores[0].name;
+            }
+          });
+          onSnapshot(collection(db, "price_records"), (snapshot) => {
+            records.value = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            if (records.value.length > 0 && !activeMainCat.value) {
+               const sorted = sortedMainCategories.value;
+               if(sorted.length > 0) activeMainCat.value = sorted[0];
+            }
+          });
         });
-        $('#dataTable').DataTable({
-            pageLength: 15,
-            order: [[0, 'desc']],
-            language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/ja.json" },
-            searching: true,
-            scrollX: true
-        });
-    }
 
-    window.onload = function() {
-        loadDataFromFirebase();
-    };
-</script>
+        return { 
+          activeView, mainRef, isAdding, records, searchQuery, activeMainCat, activeStoreTab, expandedGroup, calc, form, settings, mutableTabOrder, cartChecked,
+          uniqueRawMainCategories, sortedMainCategories, filteredGroups, storeBuyList, toggleExpand, openAddSheet, quickAddToGroup, registerFromCalc, editRecord, saveRecord, deleteRecord, saveSettings, moveTabUp, moveTabDown, handleTouchStart, handleTouchEnd, getCalcEffectivePrice, resetCalc, getStoreDiscount, addStore, removeStore,
+          formatUnitPrice, formatYen, getStoreIcon, getStoreTheme, calcResult, calcValid 
+        };
+      }
+    }).mount('#app');
+  </script>
 </body>
 </html>
